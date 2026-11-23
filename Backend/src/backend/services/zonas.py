@@ -25,6 +25,7 @@ class ZonaService:
         zonas = []
         for barrio in self._barrios.list():
             del_barrio: list[Reporte] = [r for r in reportes if r.id_barrio == barrio.id]
+            # Incluye el bono de novedad de los reportes de los últimos 7 días (tope +6).
             temperatura = temperatura_zona(del_barrio, ahora)
             frecuentes = Counter(r.tipo for r in del_barrio).most_common(3)
             zonas.append(

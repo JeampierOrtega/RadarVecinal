@@ -890,6 +890,42 @@ details[open].card summary::after {
   display: none;
 }
 
+/* Tooltip de un punto de reporte: varias líneas y texto del vecino, sin HTML. */
+.leaflet-tooltip.tooltip-reporte {
+  max-width: 250px;
+  padding: 0.55rem 0.7rem;
+  text-align: left;
+  white-space: normal;
+  line-height: 1.35;
+  font-weight: 500;
+}
+.tooltip-reporte-titulo {
+  display: block;
+  font-weight: 800;
+  font-size: 0.8rem;
+}
+.tooltip-reporte-desc {
+  display: block;
+  margin-top: 0.15rem;
+  color: #dbe8f2;
+  overflow-wrap: anywhere;
+}
+.tooltip-reporte-meta {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.7rem;
+  color: #a9c0d1;
+}
+
+/* Panes del mapa de calor: solo capturan el ratón los trazos clicables, para que las
+   capas de arriba (calor, alertas, puntos) no tapen los barrios ni al revés. */
+.leaflet-barrios-pane > svg,
+.leaflet-alertas-pane > svg,
+.leaflet-puntos-pane > svg,
+.leaflet-calor-pane > canvas {
+  pointer-events: none;
+}
+
 .leaflet-control-zoom {
   border: 0 !important;
   border-radius: 0.8rem !important;

@@ -35,6 +35,14 @@ npx ng test --include src/app/app.spec.ts       # one test file
 - Declare static routes before `/{id}` routes (see the `/reportes/mios` comment), otherwise FastAPI treats the name as an ID.
 - JSON and Pydantic fields use `snake_case`.
 
+## Temperatura de un barrio
+`services/temperatura.py` calcula el nivel que colorea el mapa (`verde` < 8 <= `amarillo` < 18 <= `naranja` <= 30 < `rojo`) y es la misma escala que usan `temperatura_al_completar` y `temperatura_al_cumplir`:
+
+- Peso de cada reporte: `gravedad × (1 + 0.5 × min(confirmaciones, 3)/3) × 0.5^(días/15)`, con vida media de 15 días.
+- Bono de novedad **por barrio**, no por reporte: cada reporte nuevo con `estado` distinto de `falso`/`archivado` suma `2 × max(0, 1 − días/7)`; el bono total del barrio se corta en `+6` (`BONO_NOVEDAD_TOPE`).
+- Un solo asalto (gravedad 5) en un barrio sin actividad da `5 + 2 = 7.0` → **verde**. Hacen falta al menos **dos** reportes graves recientes para llegar a `amarillo`, y tres para `naranja`. No bajes el umbral de 8 esperando que un reporte cambie el color.
+- Los tests de esta regla están en `Backend/tests/test_temperatura.py` (pytest, sin DB).
+
 ## Frontend conventions
 - Keep Spanish naming for files, classes, methods, and UI text. `Interfaces/` types intentionally mirror backend `snake_case` fields.
 - All HTTP goes through `Services/api.service.ts` (`get/post/put/patch/delete`), which prepends `environment.apiUrl`, applies a 20-second timeout, returns Promises, and throws `ApiError` with the HTTP status. Put endpoint calls in feature services (`reportes`, `acciones`, etc.), not in components.
@@ -43,6 +51,7 @@ npx ng test --include src/app/app.spec.ts       # one test file
 - Forms use Signal Forms (`form()`, `[formField]`, `submit()` from `@angular/forms/signals`), not Reactive Forms or `ngModel`.
 - User-facing alerts go through `NotificacionesService` (SweetAlert2), which formats `ApiError` status/details.
 - Components are standalone and lazy-loaded in `app.routes.ts`; add screens there with the correct role guard. SSR is enabled, so guard browser-only APIs (`sessionStorage`, `window`, Leaflet).
+- `mapa-calor.ts` usa panes propios (`barrios` 350 < `calor` 380 < `alertas` 410 < `puntos` 640, por debajo de `tooltipPane`) y un `L.svg({ pane })` por pane: con `preferCanvas` todos los vectores comparten un canvas y el z-index no basta. Los SVG de barrios/alertas/puntos y el canvas de calor llevan `pointer-events: none` para que solo capture el ratón el trazo dibujado. El temporizador de cada segundo solo debe redibujar la capa de alertas; los tooltips de los puntos se arman con DOM + `textContent` (la descripción la escribe el vecino).
 
 ## Frontend-backend gotcha
 - CORS is configured in `Backend/src/backend/main.py` for `http://localhost:4200` and `http://127.0.0.1:4200`, with `X-Usuario-Id` allowed. If you add a new custom request header, update `allow_headers` or browser calls will fail preflight.
