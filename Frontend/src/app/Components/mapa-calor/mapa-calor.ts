@@ -14,7 +14,7 @@ import type * as Leaflet from 'leaflet';
 import { Accion } from '../../Interfaces/accion.interface';
 import { CENTRO_HUANCAYO, COLOR_NIVEL, ETIQUETA_TIPO } from '../../Interfaces/constantes';
 import { Alerta } from '../../Interfaces/panel.interface';
-import { ReportePublico } from '../../Interfaces/reporte.interface';
+import { EstadoReporte, ReportePublico } from '../../Interfaces/reporte.interface';
 import { ZonaResumen } from '../../Interfaces/zona.interface';
 
 export interface Punto {
@@ -24,11 +24,48 @@ export interface Punto {
 
 export type BaseMapa = 'mapa' | 'satelite';
 
-/** Mismo cálculo del backend: gravedad × confirmaciones × 0.5^(días/15). Solo para dibujar el calor. */
+/** Mismo cálculo base del backend (gravedad × confirmaciones × 0.5^(días/15)), sin el
+ * bono de novedad: ese es por barrio y con tope. */
 function pesoReporte(r: ReportePublico): number {
   const dias = Math.max(0, (Date.now() - new Date(r.fecha).getTime()) / 86_400_000);
   const factor = 1 + (Math.min(Math.max(r.confirmaciones, 0), 3) / 3) * 0.5;
   return r.gravedad * factor * Math.pow(0.5, dias / 15);
+}
+
+const ETIQUETA_ESTADO: Record<EstadoReporte, string> = {
+  activo: 'Activo',
+  confirmado: 'Confirmado',
+  falso: 'Falso',
+  archivado: 'Archivado',
+};
+
+/** Fecha relativa corta ("hace 3 min") para el tooltip del punto. */
+function fechaRelativa(fecha: string): string {
+  const minutos = Math.max(0, Math.round((Date.now() - Date.parse(fecha)) / 60_000));
+  if (minutos < 1) return 'ahora';
+  if (minutos < 60) return `hace ${minutos} min`;
+  const horas = Math.round(minutos / 60);
+  if (horas < 24) return `hace ${horas} h`;
+  return `hace ${Math.round(horas / 24)} d`;
+}
+
+/**
+ * Contenido del tooltip construido con DOM y textContent: la descripción la escribe
+ * un vecino, así que nunca se inserta como HTML (evita XSS).
+ */
+function contenidoReporte(r: ReportePublico): HTMLElement {
+  const caja = document.createElement('div');
+  const titulo = document.createElement('strong');
+  titulo.className = 'tooltip-reporte-titulo';
+  titulo.textContent = ETIQUETA_TIPO[r.tipo];
+  const descripcion = document.createElement('span');
+  descripcion.className = 'tooltip-reporte-desc';
+  descripcion.textContent = r.descripcion;
+  const meta = document.createElement('span');
+  meta.className = 'tooltip-reporte-meta';
+  meta.textContent = `Gravedad ${r.gravedad}/5 · ${fechaRelativa(r.fecha)} · ${ETIQUETA_ESTADO[r.estado]}`;
+  caja.append(titulo, descripcion, meta);
+  return caja;
 }
 
 function mmss(segundos: number): string {
@@ -74,6 +111,9 @@ export class MapaCalor implements OnDestroy {
   private capas?: Leaflet.LayerGroup;
   private capasAlerta?: Leaflet.LayerGroup;
   private capaCalor?: Leaflet.Layer;
+  private rendererBarrios?: Leaflet.Renderer;
+  private rendererAlertas?: Leaflet.Renderer;
+  private rendererPuntos?: Leaflet.Renderer;
   private baseMapa?: Leaflet.TileLayer;
   private baseSatelite?: Leaflet.TileLayer;
   private etiquetasSatelite?: Leaflet.TileLayer;
@@ -133,6 +173,24 @@ export class MapaCalor implements OnDestroy {
       this.L.control
         .scale({ position: 'bottomright', imperial: false, maxWidth: 120 })
         .addTo(this.mapa);
+
+      // Panes propios con z-index explícito, de abajo hacia arriba:
+      // barrios < calor < alertas < puntos de reportes. Cada pane necesita su propio
+      // renderer (con preferCanvas todos los vectores comparten un único canvas y el
+      // z-index de los panes no serviría de nada). Los renderers son SVG para que solo
+      // capture el ratón lo que está dibujado: los puntos no tapan los barrios de abajo.
+      const panes: [string, string][] = [
+        ['barrios', '350'],
+        ['calor', '380'],
+        ['alertas', '410'],
+        ['puntos', '640'], // por debajo de tooltipPane (650), para que el tooltip se vea
+      ];
+      for (const [nombre, z] of panes) {
+        this.mapa.createPane(nombre).style.zIndex = z;
+      }
+      this.rendererBarrios = this.L.svg({ pane: 'barrios' });
+      this.rendererAlertas = this.L.svg({ pane: 'alertas' });
+      this.rendererPuntos = this.L.svg({ pane: 'puntos' });
 
       this.capas = this.L.layerGroup().addTo(this.mapa);
       this.capasAlerta = this.L.layerGroup().addTo(this.mapa);
@@ -276,17 +334,21 @@ export class MapaCalor implements OnDestroy {
       const zona = zonas.find((z) => z.id === alerta.id_barrio);
       const segundos = Math.max(0, Math.ceil((Date.parse(alerta.expira) - ahora) / 1000));
       if (!zona || segundos <= 0) continue;
+      // No interactivo: el clic lo sigue resolviendo el polígono del barrio, y así esta
+      // capa (que se redibuja cada segundo) no roba el hover de los puntos de reportes.
       L.polygon(zona.poligono, {
+        renderer: this.rendererAlertas,
         color: COLOR_NIVEL.rojo,
         weight: 5,
         fill: false,
+        interactive: false,
         className: 'barrio-en-alerta',
       })
         .bindTooltip(`${zona.nombre} · EN ALERTA ${mmss(segundos)}`, {
           permanent: true,
           direction: 'center',
+          interactive: false,
         })
-        .on('click', () => this.zonaClick.emit(zona.id))
         .addTo(capa);
     }
   }
@@ -298,12 +360,15 @@ export class MapaCalor implements OnDestroy {
     const zonas = this.zonas();
     const seleccion = this.seleccion();
     const elegir = this.elegir();
+    // OJO: este método no debe leer `ahora`. El temporizador de cada segundo solo
+    // alimenta dibujarAlertas(); los barrios y los puntos solo cambian con los datos.
     capas.clearLayers();
 
     // Barrios coloreados según su temperatura
     for (const zona of zonas) {
       const color = COLOR_NIVEL[zona.nivel];
       const poligono = L.polygon(zona.poligono, {
+        renderer: this.rendererBarrios,
         color,
         fillColor: color,
         fillOpacity: seleccion === zona.id ? 0.38 : 0.22,
@@ -313,10 +378,12 @@ export class MapaCalor implements OnDestroy {
       }).addTo(capas);
       if (!elegir) {
         // Etiqueta fija con el nombre: el mapa queda "lleno" de información útil.
+        // No interactiva, para que no estorbe al pasar el ratón por los puntos.
         poligono
           .bindTooltip(zona.nombre, {
             permanent: true,
             direction: 'center',
+            interactive: false,
             className: 'etiqueta-barrio',
             opacity: 0.95,
           })
@@ -338,6 +405,7 @@ export class MapaCalor implements OnDestroy {
       .map((r) => [r.lat, r.lng, pesoReporte(r)] as [number, number, number]);
     this.capaCalor = (
       new this.HeatLayer(puntosCalor, {
+        pane: 'calor',
         radius: 32,
         blur: 25,
         max: 8,
@@ -375,16 +443,18 @@ export class MapaCalor implements OnDestroy {
       // Cada reporte es un punto clicable; el color y el tamaño reflejan su gravedad.
       for (const reporte of this.reportes()) {
         L.circleMarker([reporte.lat, reporte.lng], {
+          renderer: this.rendererPuntos,
           radius: 3.4 + Math.min(reporte.gravedad, 5) * 0.42,
           color: '#ffffff',
           fillColor: this.colorGravedad(reporte.gravedad),
           fillOpacity: 0.92,
           weight: 1.3,
         })
-          .bindTooltip(
-            `<strong>${ETIQUETA_TIPO[reporte.tipo]}</strong><br>${reporte.descripcion}`,
-            { direction: 'top', className: 'tooltip-reporte' },
-          )
+          .bindTooltip(contenidoReporte(reporte), {
+            direction: 'top',
+            offset: [0, -2],
+            className: 'tooltip-reporte',
+          })
           .on('click', (e: Leaflet.LeafletMouseEvent) => {
             L.DomEvent.stopPropagation(e.originalEvent);
             this.reporteClick.emit(reporte.id);
@@ -397,6 +467,7 @@ export class MapaCalor implements OnDestroy {
     const punto = this.punto();
     if (punto) {
       L.circleMarker([punto.lat, punto.lng], {
+        renderer: this.rendererPuntos,
         radius: 9,
         color: COLOR_NIVEL.rojo,
         fillOpacity: 0.9,
