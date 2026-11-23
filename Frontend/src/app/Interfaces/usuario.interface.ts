@@ -6,6 +6,7 @@ export type EstadoUsuario = 'Pendiente' | 'Verificado' | 'Rechazado';
 export interface Usuario {
   id: string;
   nombre: string;
+  dni?: string | null;
   correo: string;
   rol: Rol;
   id_barrio: string | null;
@@ -21,7 +22,9 @@ export interface LoginDatos {
 
 export interface RegistroDatos {
   nombre: string;
+  dni: string;
   correo: string;
   clave: string;
   id_barrio: string;
+  codigo_barrio: string;
 }

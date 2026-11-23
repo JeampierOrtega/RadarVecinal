@@ -32,5 +32,22 @@ class BarrioRepository:
             ).fetchone()
         return _a_barrio(fila) if fila else None
 
+    def validar_codigo(
+        self, id_barrio: str, codigo: str, conn: Connection | None = None
+    ) -> bool:
+        """Valida si el código de acceso existe, está activo, no ha expirado y corresponde al barrio."""
+        with conexion(conn) as actual:
+            fila = actual.execute(
+                """
+                SELECT 1 FROM codigos_barrio
+                 WHERE id_barrio = %s
+                   AND btrim(upper(codigo)) = btrim(upper(%s))
+                   AND activo = TRUE
+                   AND (fecha_expiracion IS NULL OR fecha_expiracion > now())
+                """,
+                (id_barrio, codigo),
+            ).fetchone()
+        return fila is not None
+
 
 barrio_repository = BarrioRepository()

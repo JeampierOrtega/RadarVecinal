@@ -160,7 +160,14 @@
           <div class="card p-3 mb-2 d-flex flex-row align-items-center gap-3 flex-wrap">
             <span class="avatar-solicitud">{{ u.nombre.charAt(0) }}</span>
             <div class="flex-grow-1 min-w-0">
-              <div class="fw-semibold">{{ u.nombre }}</div>
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="fw-semibold">{{ u.nombre }}</span>
+                @if (u.dni) {
+                  <span class="badge text-bg-light border font-monospace text-secondary">
+                    <i class="bi bi-person-vcard me-1"></i>DNI: {{ u.dni }}
+                  </span>
+                }
+              </div>
               <div class="small text-secondary">
                 {{ u.correo }} · {{ nombreBarrio(u.id_barrio ?? '') }}
               </div>

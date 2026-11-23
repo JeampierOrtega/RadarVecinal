@@ -7,7 +7,7 @@ from backend.schemas.usuarios import UsuarioDB
 
 # Columnas en el mismo orden y con los mismos nombres que el modelo Pydantic.
 _COLUMNAS = (
-    "id, nombre, correo, clave_hash, rol, id_barrio, estado, fecha_registro, institucion"
+    "id, nombre, dni, correo, clave_hash, rol, id_barrio, estado, fecha_registro, institucion"
 )
 
 
@@ -34,19 +34,28 @@ class UsuarioRepository:
             ).fetchone()
         return UsuarioDB(**fila) if fila else None
 
+    def get_by_dni(self, dni: str) -> UsuarioDB | None:
+        with conexion() as conn:
+            fila = conn.execute(
+                f"SELECT {_COLUMNAS} FROM usuarios WHERE dni = %s",
+                (dni.strip(),),
+            ).fetchone()
+        return UsuarioDB(**fila) if fila else None
+
     def add(self, usuario: UsuarioDB) -> UsuarioDB:
         with conexion() as conn:
             conn.execute(
                 """
                 INSERT INTO usuarios
-                    (id, nombre, correo, clave_hash, rol, id_barrio, estado,
+                    (id, nombre, dni, correo, clave_hash, rol, id_barrio, estado,
                      fecha_registro, institucion)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (id) DO NOTHING
                 """,
                 (
                     usuario.id,
                     usuario.nombre,
+                    usuario.dni,
                     usuario.correo,
                     usuario.clave_hash,
                     usuario.rol,
@@ -63,12 +72,13 @@ class UsuarioRepository:
             conn.execute(
                 """
                 UPDATE usuarios
-                   SET nombre = %s, correo = %s, clave_hash = %s, rol = %s,
+                   SET nombre = %s, dni = %s, correo = %s, clave_hash = %s, rol = %s,
                        id_barrio = %s, estado = %s, institucion = %s
                  WHERE id = %s
                 """,
                 (
                     usuario.nombre,
+                    usuario.dni,
                     usuario.correo,
                     usuario.clave_hash,
                     usuario.rol,

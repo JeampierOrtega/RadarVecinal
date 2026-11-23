@@ -1,7 +1,7 @@
 DROP VIEW IF EXISTS v_conteo_tablas, v_resumen_barrios, v_alertas_activas, v_iniciativas, v_acciones, v_reportes, v_usuarios;
 
 CREATE VIEW v_usuarios AS
-SELECT u.id, u.nombre, u.correo, u.rol, u.estado,
+SELECT u.id, u.nombre, u.dni, u.correo, u.rol, u.estado,
        b.nombre AS barrio, u.institucion, u.fecha_registro
 FROM usuarios u
 LEFT JOIN barrios b ON b.id = u.id_barrio
@@ -56,6 +56,7 @@ ORDER BY length(b.id), b.id;
 
 CREATE VIEW v_conteo_tablas AS
           SELECT 'barrios'                  AS tabla, count(*) AS filas FROM barrios
+UNION ALL SELECT 'codigos_barrio',           count(*) FROM codigos_barrio
 UNION ALL SELECT 'usuarios',                 count(*) FROM usuarios
 UNION ALL SELECT 'reportes',                 count(*) FROM reportes
 UNION ALL SELECT 'votos_reporte',            count(*) FROM votos_reporte

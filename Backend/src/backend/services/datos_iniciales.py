@@ -248,10 +248,22 @@ PERFILES_TIEMPO = {
     "b9": (4, 35),   # Chorrillos
 }
 
+CODIGOS_INICIALES = [
+    ("c_b1", "b1", "TORRE-2026"),
+    ("c_b2", "b2", "PALIAN-2026"),
+    ("c_b3", "b3", "SANCARLOS-2026"),
+    ("c_b4", "b4", "MONUMENTAL-2026"),
+    ("c_b5", "b5", "OCOPILLA-2026"),
+    ("c_b6", "b6", "CAJASCHICO-2026"),
+    ("c_b7", "b7", "SANANTONIO-2026"),
+    ("c_b8", "b8", "UNAS-2026"),
+    ("c_b9", "b9", "CHORRILLOS-2026"),
+]
+
 SQL_USUARIO = """
     INSERT INTO usuarios
-        (id, nombre, correo, clave_hash, rol, id_barrio, estado, fecha_registro, institucion)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        (id, nombre, dni, correo, clave_hash, rol, id_barrio, estado, fecha_registro, institucion)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     ON CONFLICT DO NOTHING
 """
 
@@ -295,13 +307,26 @@ def _tablas_vacias(conn: Connection) -> dict[str, bool]:
     """Indica qué tablas están vacías (con una sola consulta)."""
     fila = conn.execute(
         """
-        SELECT NOT EXISTS (SELECT 1 FROM usuarios)    AS usuarios,
-               NOT EXISTS (SELECT 1 FROM reportes)    AS reportes,
-               NOT EXISTS (SELECT 1 FROM iniciativas) AS iniciativas,
-               NOT EXISTS (SELECT 1 FROM acciones)    AS acciones
+        SELECT NOT EXISTS (SELECT 1 FROM usuarios)       AS usuarios,
+               NOT EXISTS (SELECT 1 FROM codigos_barrio) AS codigos_barrio,
+               NOT EXISTS (SELECT 1 FROM reportes)       AS reportes,
+               NOT EXISTS (SELECT 1 FROM iniciativas)    AS iniciativas,
+               NOT EXISTS (SELECT 1 FROM acciones)       AS acciones
         """
     ).fetchone()
     return fila
+
+
+def _cargar_codigos_barrio(conn: Connection) -> None:
+    for id_cod, id_barrio, codigo in CODIGOS_INICIALES:
+        conn.execute(
+            """
+            INSERT INTO codigos_barrio (id, id_barrio, codigo, activo, fecha_expiracion)
+            VALUES (%s, %s, %s, TRUE, NULL)
+            ON CONFLICT DO NOTHING
+            """,
+            (id_cod, id_barrio, codigo),
+        )
 
 
 def _vecinos(conn: Connection) -> list[dict]:
@@ -321,6 +346,7 @@ def _cargar_usuarios(conn: Connection, ahora: datetime, barrios: list[Barrio]) -
             (
                 f"v{i + 1}",
                 nombre,
+                f"400000{i + 1:02d}",
                 "vecino@barrio.com" if i == 0 else f"vecino{i + 1}@radar.pe",
                 clave,
                 "vecino",
@@ -343,6 +369,7 @@ def _cargar_usuarios(conn: Connection, ahora: datetime, barrios: list[Barrio]) -
             (
                 f"v{len(NOMBRES) + i}",
                 nombre,
+                f"400000{len(NOMBRES) + i:02d}",
                 f"pendiente{i}@radar.pe",
                 clave,
                 "vecino",
@@ -358,6 +385,7 @@ def _cargar_usuarios(conn: Connection, ahora: datetime, barrios: list[Barrio]) -
         (
             "m1",
             "Gerencia de Seguridad Ciudadana",
+            "00000001",
             "muni@huancayo.gob.pe",
             clave,
             "municipalidad",
@@ -542,6 +570,9 @@ def cargar_datos_iniciales() -> None:
             )
 
         vacias = _tablas_vacias(conn)
+        if vacias["codigos_barrio"]:
+            _cargar_codigos_barrio(conn)
+            logger.info("Datos demo: códigos de acceso por barrio insertados")
         if vacias["usuarios"]:
             _cargar_usuarios(conn, ahora, barrios)
             logger.info("Datos demo: usuarios y cuentas insertados")

@@ -8,6 +8,7 @@ Rol = Literal["vecino", "municipalidad"]
 EstadoUsuario = Literal["Pendiente", "Verificado", "Rechazado"]
 
 CORREO_PATTERN = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
+DNI_PATTERN = r"^[0-9]{8}$"
 
 
 class Login(BaseModel):
@@ -20,14 +21,16 @@ class Login(BaseModel):
 
 
 class UsuarioRegistro(BaseModel):
-    """Datos para que un vecino cree su cuenta (queda 'Pendiente')."""
+    """Datos para que un vecino cree su cuenta."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
     nombre: str = Field(..., min_length=3, max_length=100, examples=["Rosa Quispe"])
+    dni: str = Field(..., pattern=DNI_PATTERN, min_length=8, max_length=8, examples=["40000001"])
     correo: str = Field(..., pattern=CORREO_PATTERN, examples=["rosa@correo.com"])
     clave: str = Field(..., min_length=6, max_length=50)
     id_barrio: str = Field(..., min_length=1, examples=["b1"])
+    codigo_barrio: str = Field(..., min_length=1, examples=["TORRE-2026"])
 
 
 class UsuarioUpdate(BaseModel):
@@ -50,6 +53,7 @@ class Usuario(BaseModel):
 
     id: str
     nombre: str
+    dni: str | None = None
     correo: str
     rol: Rol
     id_barrio: str | None

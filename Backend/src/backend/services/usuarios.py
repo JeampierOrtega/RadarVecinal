@@ -57,18 +57,33 @@ class UsuarioService:
 
     # --- CRUD ---
     def registrar(self, datos: UsuarioRegistro) -> UsuarioDB:
+        dni = datos.dni.strip()
+        if not (len(dni) == 8 and dni.isdigit()):
+            raise SolicitudIncorrectaError("El DNI debe tener exactamente 8 dígitos numéricos.")
+
         if self._barrios.get(datos.id_barrio) is None:
             raise SolicitudIncorrectaError("El barrio seleccionado no existe.")
+
+        if not self._barrios.validar_codigo(datos.id_barrio, datos.codigo_barrio):
+            raise SolicitudIncorrectaError(
+                "El código de acceso no corresponde al barrio seleccionado o ha expirado"
+            )
+
+        if self._repository.get_by_dni(dni) is not None:
+            raise ConflictoError("Este DNI ya se encuentra registrado")
+
         correo = datos.correo.lower()
         if self._repository.get_by_correo(correo) is not None:
             raise ConflictoError(f"Ya existe una cuenta con el correo '{correo}'.")
+
         usuario = UsuarioDB(
             id=f"v_{uuid4().hex[:8]}",
             nombre=datos.nombre,
+            dni=dni,
             correo=correo,
             rol="vecino",
             id_barrio=datos.id_barrio,
-            estado="Pendiente",  # la Municipalidad debe aprobarlo
+            estado="Verificado",
             fecha_registro=datetime.now(UTC),
             clave_hash=hashear(datos.clave),
         )

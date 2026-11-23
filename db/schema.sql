@@ -11,6 +11,7 @@ DROP TABLE IF EXISTS denuncias_reporte        CASCADE;
 DROP TABLE IF EXISTS votos_reporte            CASCADE;
 DROP TABLE IF EXISTS reportes                 CASCADE;
 DROP TABLE IF EXISTS usuarios                 CASCADE;
+DROP TABLE IF EXISTS codigos_barrio           CASCADE;
 DROP TABLE IF EXISTS barrios                  CASCADE;
 
 -- ---------- BARRIOS ----------
@@ -21,10 +22,23 @@ CREATE TABLE barrios (
         CHECK (jsonb_typeof(poligono) = 'array')
 );
 
+-- ---------- CÓDIGOS DE ACCESO POR BARRIO ----------
+CREATE TABLE codigos_barrio (
+    id                TEXT PRIMARY KEY,
+    id_barrio         TEXT NOT NULL REFERENCES barrios(id) ON UPDATE CASCADE ON DELETE CASCADE,
+    codigo            TEXT NOT NULL UNIQUE,
+    activo            BOOLEAN NOT NULL DEFAULT TRUE,
+    fecha_expiracion  TIMESTAMPTZ
+);
+CREATE INDEX idx_codigos_barrio_barrio ON codigos_barrio(id_barrio);
+CREATE INDEX idx_codigos_barrio_codigo ON codigos_barrio(codigo);
+
 -- ---------- USUARIOS ----------
 CREATE TABLE usuarios (
     id              TEXT PRIMARY KEY,
     nombre          VARCHAR(100) NOT NULL CHECK (char_length(nombre) >= 3),
+    dni             CHAR(8)      NOT NULL UNIQUE
+        CHECK (dni ~ '^[0-9]{8}$'),
     correo          TEXT         NOT NULL UNIQUE
         CHECK (correo ~ '^[^@\s]+@[^@\s]+\.[^@\s]+$'),
     clave_hash      TEXT         NOT NULL,
@@ -37,6 +51,7 @@ CREATE TABLE usuarios (
 );
 CREATE INDEX idx_usuarios_barrio ON usuarios(id_barrio);
 CREATE INDEX idx_usuarios_estado ON usuarios(estado);
+CREATE INDEX idx_usuarios_dni    ON usuarios(dni);
 
 -- ---------- REPORTES ----------
 CREATE TABLE reportes (
