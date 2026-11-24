@@ -21,6 +21,7 @@ from backend.services.datos_iniciales import cargar_datos_iniciales
 from backend.services.exceptions import (
     AccesoDenegadoError,
     ConflictoError,
+    LimiteExcedidoError,
     NoAutenticadoError,
     NoEncontradoError,
     SolicitudIncorrectaError,
@@ -106,6 +107,11 @@ async def no_encontrado_handler(request: Request, exc: NoEncontradoError) -> JSO
 @app.exception_handler(ConflictoError)
 async def conflicto_handler(request: Request, exc: ConflictoError) -> JSONResponse:
     return respuesta_error(status.HTTP_409_CONFLICT, str(exc))
+
+
+@app.exception_handler(LimiteExcedidoError)
+async def limite_excedido_handler(request: Request, exc: LimiteExcedidoError) -> JSONResponse:
+    return respuesta_error(status.HTTP_429_TOO_MANY_REQUESTS, str(exc))
 
 
 @app.exception_handler(RequestValidationError)

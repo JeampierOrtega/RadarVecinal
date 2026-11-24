@@ -50,4 +50,12 @@ export class ReportesService {
   moderar(id: string, estado: 'falso' | 'archivado'): Promise<ReportePublico> {
     return this.api.patch(`/reportes/${id}/estado`, { estado });
   }
+
+  /** Moderación avanzada: marcar falso (+1 strike) o purgar spam masivo y banear. */
+  moderarAccion(
+    id: string,
+    accion: 'marcar_falso' | 'purgar_spam',
+  ): Promise<{ detail: string }> {
+    return this.api.post(`/reportes/${id}/moderar`, { accion });
+  }
 }

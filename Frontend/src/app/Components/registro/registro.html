@@ -13,19 +13,19 @@
       <ol class="pasos">
         <li>
           <span>1</span>
-          <div><strong>Crea tu cuenta</strong><small>Con tu nombre, correo y barrio.</small></div>
+          <div><strong>Identifícate</strong><small>Con tu nombre, DNI y correo.</small></div>
         </li>
         <li>
           <span>2</span>
           <div>
-            <strong>Verificación municipal</strong
-            ><small>La Municipalidad revisa tu solicitud.</small>
+            <strong>Código vecinal</strong
+            ><small>Valida tu sector con el código de tu junta.</small>
           </div>
         </li>
         <li>
           <span>3</span>
           <div>
-            <strong>Participa</strong><small>Reporta incidentes e impulsa iniciativas.</small>
+            <strong>Participa</strong><small>Acceso verificado para cuidar el barrio.</small>
           </div>
         </li>
       </ol>
@@ -41,7 +41,7 @@
         </div>
         <h1 class="h4 fw-bold mb-1">Crear cuenta de vecino</h1>
         <p class="small text-secondary mb-4">
-          Solo toma un minuto. Luego la Municipalidad verificará tu barrio.
+          Solo toma un minuto. Tu identidad se valida con tu DNI y el código de tu junta vecinal.
         </p>
 
         <form (submit)="enviar($event)" novalidate>
@@ -56,6 +56,24 @@
             />
             @if (formulario.nombre().touched() && formulario.nombre().invalid()) {
               <div class="invalid-feedback">{{ formulario.nombre().errors()[0].message }}</div>
+            }
+          </div>
+
+          <div class="mb-3">
+            <label for="dni" class="form-label fw-semibold">DNI</label>
+            <input
+              id="dni"
+              type="text"
+              inputmode="numeric"
+              class="form-control font-monospace"
+              placeholder="8 dígitos (ej. 45678901)"
+              (keypress)="soloDigitos($event)"
+              (input)="limpiarDni($event)"
+              [formField]="formulario.dni"
+              [class.is-invalid]="formulario.dni().touched() && formulario.dni().invalid()"
+            />
+            @if (formulario.dni().touched() && formulario.dni().invalid()) {
+              <div class="invalid-feedback">{{ formulario.dni().errors()[0].message }}</div>
             }
           </div>
 
@@ -123,11 +141,38 @@
             }
           </div>
 
+          @if (formulario.id_barrio().value()) {
+            <div class="mb-3">
+              <label for="codigo_barrio" class="form-label fw-semibold">
+                Código de acceso del barrio
+              </label>
+              <input
+                id="codigo_barrio"
+                type="text"
+                class="form-control text-uppercase font-monospace"
+                placeholder="Ej. SANCARLOS-2026"
+                [formField]="formulario.codigo_barrio"
+                [class.is-invalid]="
+                  formulario.codigo_barrio().touched() && formulario.codigo_barrio().invalid()
+                "
+              />
+              <div class="form-text text-secondary">
+                <i class="bi bi-info-circle me-1"></i>Solicita este código en la junta vecinal de tu
+                sector
+              </div>
+              @if (formulario.codigo_barrio().touched() && formulario.codigo_barrio().invalid()) {
+                <div class="invalid-feedback">
+                  {{ formulario.codigo_barrio().errors()[0].message }}
+                </div>
+              }
+            </div>
+          }
+
           <div class="aviso-urgencia mb-3">
-            <span class="icono-redondo ambar"><i class="bi bi-hourglass-split"></i></span>
+            <span class="icono-redondo ambar"><i class="bi bi-shield-check"></i></span>
             <p class="small mb-0 text-secondary">
-              Tu cuenta quedará <strong>pendiente</strong> hasta que la Municipalidad la verifique.
-              Te avisaremos al entrar.
+              Tu registro se valida al instante con tu <strong>DNI</strong> y el
+              <strong>código oficial de acceso</strong> emitido por la junta vecinal de tu sector.
             </p>
           </div>
 
@@ -141,7 +186,7 @@
               <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span
               >Registrando…
             } @else {
-              <i class="bi bi-person-plus me-1"></i>Registrarme
+              <i class="bi bi-person-check me-1"></i>Registrarme
             }
           </button>
         </form>

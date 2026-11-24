@@ -3,7 +3,7 @@
     <div>
       <span class="eyebrow">Gestión municipal</span>
       <h1 class="h3 fw-bold mb-1">Panel de la Municipalidad</h1>
-      <p class="text-secondary mb-0">Detecta dónde actuar primero y responde a los vecinos.</p>
+      <p class="text-secondary mb-0">Detecta dónde actuar primero, modera alertas y sanciona spam/reportes falsos.</p>
     </div>
   </div>
 
@@ -19,8 +19,11 @@
           @if (p.id === 'criticos' && panel()?.criticos?.length) {
             <span class="badge text-bg-danger ms-1">{{ panel()!.criticos.length }}</span>
           }
-          @if (p.id === 'vecinos' && panel()?.pendientes?.length) {
-            <span class="badge text-bg-warning ms-1">{{ panel()!.pendientes.length }}</span>
+          @if (p.id === 'reportes' && denunciados() > 0) {
+            <span class="badge text-bg-warning ms-1">{{ denunciados() }}</span>
+          }
+          @if (p.id === 'vecinos' && vecinosSancionados() > 0) {
+            <span class="badge text-bg-danger ms-1">{{ vecinosSancionados() }}</span>
           }
         </button>
       </li>
@@ -53,10 +56,12 @@
       </div>
       <div class="col-6 col-xl-3">
         <div class="metrica">
-          <span class="metrica-icono ambar"><i class="bi bi-person-exclamation"></i></span>
+          <span class="metrica-icono" [class.rojo]="d.alertas.length > 0" [class.ambar]="d.alertas.length === 0">
+            <i class="bi bi-broadcast-pin"></i>
+          </span>
           <div>
-            <div class="metrica-valor">{{ d.pendientes.length }}</div>
-            <div class="metrica-label">Vecinos por verificar</div>
+            <div class="metrica-valor">{{ d.alertas.length }}</div>
+            <div class="metrica-label">Alertas de pánico activas</div>
           </div>
         </div>
       </div>
@@ -70,6 +75,65 @@
         </div>
       </div>
     </div>
+
+    <!-- Módulo de Alertas Activas en Vivo (alta prioridad) -->
+    @if (d.alertas.length > 0) {
+      <div class="card border-danger mb-4 shadow-sm">
+        <div class="card-header bg-danger text-white d-flex align-items-center justify-content-between py-2">
+          <span class="fw-bold">
+            <i class="bi bi-broadcast-pin me-2"></i>Alertas de Pánico Activas en Vivo ({{ d.alertas.length }})
+          </span>
+          <span class="badge text-bg-light text-danger fw-semibold">Atención Inmediata</span>
+        </div>
+        <div class="card-body p-3">
+          <p class="small text-secondary mb-3">
+            Vecinos que activaron la alarma comunitaria de 30 minutos. Atiende la emergencia o sanciona con +1 Strike si es falsa alarma.
+          </p>
+          @for (al of d.alertas; track al.id) {
+            <div class="p-3 mb-2 rounded border bg-light d-flex flex-row align-items-center gap-3 flex-wrap justify-content-between">
+              <div>
+                <div class="fw-bold fs-6 text-danger">
+                  <i class="bi bi-exclamation-octagon-fill me-1"></i>{{ al.nombre_barrio || nombreBarrio(al.id_barrio) }}
+                </div>
+                <div class="small text-secondary">
+                  Vecino autor: <strong>{{ al.autor_nombre || 'Vecino del barrio' }}</strong>
+                  @if (al.autor_dni) {
+                    <span class="badge text-bg-light border font-monospace ms-1">
+                      <i class="bi bi-person-vcard me-1"></i>DNI: {{ al.autor_dni }}
+                    </span>
+                  }
+                </div>
+                <div class="small text-muted mt-1">
+                  Inicio: {{ al.inicio | date: 'HH:mm' }} ·
+                  <span class="fw-semibold text-danger">
+                    <i class="bi bi-stopwatch me-1"></i>
+                    {{ al.minutos_restantes != null ? al.minutos_restantes + ' min restantes' : 'En curso' }}
+                  </span>
+                </div>
+              </div>
+              <div class="btn-group">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-success"
+                  [disabled]="procesandoAccion() === al.id"
+                  (click)="cancelarAlerta(al.id, 'atendida')"
+                >
+                  <i class="bi bi-check-circle me-1"></i>Atendida
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-danger"
+                  [disabled]="procesandoAccion() === al.id"
+                  (click)="cancelarAlerta(al.id, 'falsa_alarma')"
+                >
+                  <i class="bi bi-slash-circle me-1"></i>Falsa alarma (+1 Strike)
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
 
     @switch (pestana()) {
       @case ('criticos') {
@@ -155,64 +219,50 @@
           <div class="vacio"><i class="bi bi-clipboard"></i>Aún no registras acciones.</div>
         }
       }
-      @case ('vecinos') {
-        @for (u of d.pendientes; track u.id) {
-          <div class="card p-3 mb-2 d-flex flex-row align-items-center gap-3 flex-wrap">
-            <span class="avatar-solicitud">{{ u.nombre.charAt(0) }}</span>
-            <div class="flex-grow-1 min-w-0">
-              <div class="fw-semibold">{{ u.nombre }}</div>
-              <div class="small text-secondary">
-                {{ u.correo }} · {{ nombreBarrio(u.id_barrio ?? '') }}
-              </div>
-            </div>
-            <span class="badge text-bg-warning">Pendiente</span>
-            <button
-              class="btn btn-sm btn-success"
-              [disabled]="verificando() === u.id"
-              (click)="verificar(u.id, 'aprobar')"
-            >
-              Aprobar
-            </button>
-            <button
-              class="btn btn-sm btn-outline-danger"
-              [disabled]="verificando() === u.id"
-              (click)="verificar(u.id, 'rechazar')"
-            >
-              Rechazar
-            </button>
-          </div>
-        } @empty {
-          <div class="vacio"><i class="bi bi-people"></i>No hay vecinos pendientes.</div>
-        }
-      }
       @case ('reportes') {
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-          <p class="small text-secondary mb-0">
-            Los reportes con denuncias de vecinos aparecen primero. Responde con una acción para que
-            el vecino vea la solución en su reporte.
-          </p>
-          <span class="badge text-bg-light border">{{ denunciados() }} con denuncias</span>
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+          <div>
+            <h2 class="h5 fw-bold mb-1">Moderación de Reportes (Anti-Fake / Anti-Spam)</h2>
+            <p class="small text-secondary mb-0">
+              Los reportes con denuncias o votos negativos se priorizan al inicio. Sanciona reportes falsos (+1 Strike) o purga spam.
+            </p>
+          </div>
+          <div class="d-flex gap-2">
+            <span class="badge text-bg-warning border fs-6">
+              <i class="bi bi-exclamation-octagon me-1"></i>{{ denunciados() }} con alertas
+            </span>
+          </div>
         </div>
-        <div class="table-responsive card">
+        <div class="table-responsive card shadow-sm">
           <table class="table table-hover align-middle mb-0">
-            <thead>
+            <thead class="table-light">
               <tr>
-                <th>Tipo</th>
-                <th>Barrio</th>
-                <th>Fecha</th>
+                <th>Incidente / Advertencias</th>
+                <th>Barrio y Fecha</th>
+                <th>Autor / Strikes</th>
                 <th>Estado</th>
-                <th></th>
+                <th class="text-end">Acciones de moderación</th>
               </tr>
             </thead>
             <tbody>
               @for (r of reportesOrdenados(); track r.id) {
-                <tr>
+                <tr [class.table-warning]="r.denuncias > 0 || (r.incorrectos ?? 0) > 0">
                   <td>
-                    <div class="d-flex align-items-center gap-1 flex-wrap">
-                      <span>{{ etiquetaTipo[r.tipo] }}</span>
+                    <div class="d-flex align-items-center gap-1 flex-wrap mb-1">
+                      <span class="fw-semibold">{{ etiquetaTipo[r.tipo] }}</span>
                       @if (r.denuncias > 0) {
-                        <span class="badge text-bg-danger" [title]="r.denuncias + ' denuncias'">
-                          <i class="bi bi-flag-fill me-1"></i>{{ r.denuncias }}
+                        <span class="badge text-bg-danger" [title]="r.denuncias + ' denuncias de vecinos'">
+                          <i class="bi bi-flag-fill me-1"></i>{{ r.denuncias }} denuncia(s)
+                        </span>
+                      }
+                      @if ((r.incorrectos ?? 0) > 0) {
+                        <span class="badge text-bg-warning text-dark" [title]="r.incorrectos + ' votos de incorrecto'">
+                          <i class="bi bi-hand-thumbs-down-fill me-1"></i>{{ r.incorrectos }} voto(s) negativo(s)
+                        </span>
+                      }
+                      @if (r.denuncias > 0 || (r.incorrectos ?? 0) > 0) {
+                        <span class="badge text-bg-dark">
+                          <i class="bi bi-shield-exclamation me-1"></i>Revisión urgente
                         </span>
                       }
                       @if (respuestaDe(r.id); as respuesta) {
@@ -221,22 +271,67 @@
                         </span>
                       }
                     </div>
-                    <div class="small text-secondary text-truncate" style="max-width: 22rem">
+                    <div class="small text-secondary" style="max-width: 24rem">
                       {{ r.descripcion }}
                     </div>
                   </td>
-                  <td>{{ nombreBarrio(r.id_barrio) }}</td>
-                  <td>{{ r.fecha | date: 'dd/MM/yyyy' }}</td>
-                  <td class="text-capitalize">{{ r.estado }}</td>
+                  <td>
+                    <div class="fw-semibold">{{ nombreBarrio(r.id_barrio) }}</div>
+                    <div class="small text-secondary">{{ r.fecha | date: 'dd/MM/yyyy HH:mm' }}</div>
+                  </td>
+                  <td>
+                    <div class="fw-semibold">{{ r.autor_nombre || 'Vecino' }}</div>
+                    <div class="small text-secondary font-monospace">
+                      DNI: {{ r.autor_dni || '-' }}
+                    </div>
+                    <span
+                      class="badge mt-1"
+                      [class.text-bg-danger]="(r.autor_strikes ?? 0) >= 3"
+                      [class.text-bg-warning]="(r.autor_strikes ?? 0) > 0 && (r.autor_strikes ?? 0) < 3"
+                      [class.text-bg-light]="!r.autor_strikes"
+                      [class.border]="!r.autor_strikes"
+                    >
+                      <i class="bi bi-shield-slash me-1"></i>Strikes: {{ r.autor_strikes ?? 0 }}/3
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      class="badge text-capitalize"
+                      [class.text-bg-success]="r.estado === 'confirmado'"
+                      [class.text-bg-primary]="r.estado === 'activo'"
+                      [class.text-bg-danger]="r.estado === 'falso'"
+                      [class.text-bg-secondary]="r.estado === 'archivado'"
+                    >
+                      {{ r.estado }}
+                    </span>
+                  </td>
                   <td class="text-end text-nowrap">
                     <div class="btn-group">
+                      @if (r.estado !== 'falso' && r.estado !== 'archivado') {
+                        <button
+                          class="btn btn-sm btn-outline-danger"
+                          title="Declarar falso y aplicar +1 strike al autor"
+                          [disabled]="procesandoAccion() === r.id"
+                          (click)="marcarFalso(r)"
+                        >
+                          <i class="bi bi-x-octagon me-1"></i>Marcar falso (+1 Strike)
+                        </button>
+                        <button
+                          class="btn btn-sm btn-danger"
+                          title="Purgar todos los reportes del autor y banearlo"
+                          [disabled]="procesandoAccion() === r.id"
+                          (click)="purgarSpam(r)"
+                        >
+                          <i class="bi bi-trash3-fill me-1"></i>Purgar spam y banear
+                        </button>
+                      }
                       <button
                         class="btn btn-sm btn-outline-secondary"
                         (click)="reporteId.set(r.id)"
                       >
-                        Ver / moderar
+                        Ver detalle
                       </button>
-                      @if (!respuestaDe(r.id) && r.estado !== 'archivado') {
+                      @if (!respuestaDe(r.id) && r.estado !== 'archivado' && r.estado !== 'falso') {
                         <button class="btn btn-sm btn-acento" (click)="responderReporte(r)">
                           <i class="bi bi-reply me-1"></i>Responder
                         </button>
@@ -255,6 +350,135 @@
               }
             </tbody>
           </table>
+        </div>
+      }
+      @case ('vecinos') {
+        <!-- Nuevo módulo de Moderación de Vecinos (reemplaza 'Vecinos por verificar') -->
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+          <div>
+            <h2 class="h5 fw-bold mb-1">Moderación y Control de Vecinos</h2>
+            <p class="small text-secondary mb-0">
+              Monitorea los strikes y aplica sanciones manuales: suspende temporalmente, banea de forma definitiva o reactiva cuentas.
+            </p>
+          </div>
+          <div>
+            <span class="badge text-bg-secondary border fs-6">
+              Total vecinos: {{ vecinosLista().length }}
+            </span>
+          </div>
+        </div>
+
+        <div class="card shadow-sm">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Vecino</th>
+                  <th>DNI y Contacto</th>
+                  <th>Barrio</th>
+                  <th>Strikes acumulados</th>
+                  <th>Estado de la cuenta</th>
+                  <th class="text-end">Acciones disciplinarias</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (u of vecinosLista(); track u.id) {
+                  <tr [class.table-danger]="u.estado === 'Baneado'" [class.table-warning]="u.estado === 'Suspendido'">
+                    <td>
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="avatar-solicitud">{{ u.nombre.charAt(0) }}</span>
+                        <div>
+                          <div class="fw-semibold">{{ u.nombre }}</div>
+                          <div class="small text-secondary">Registro: {{ u.fecha_registro | date: 'dd/MM/yyyy' }}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div>
+                        @if (u.dni) {
+                          <span class="badge text-bg-light border font-monospace">
+                            <i class="bi bi-person-vcard me-1"></i>{{ u.dni }}
+                          </span>
+                        }
+                      </div>
+                      <div class="small text-secondary mt-1">{{ u.correo }}</div>
+                    </td>
+                    <td>{{ nombreBarrio(u.id_barrio ?? '') }}</td>
+                    <td>
+                      <span
+                        class="badge fs-6"
+                        [class.text-bg-danger]="u.strikes >= 3"
+                        [class.text-bg-warning]="u.strikes > 0 && u.strikes < 3"
+                        [class.text-bg-secondary]="u.strikes === 0"
+                      >
+                        {{ u.strikes }}/3 Strikes
+                      </span>
+                    </td>
+                    <td>
+                      @if (u.estado === 'Verificado') {
+                        <span class="badge text-bg-success"><i class="bi bi-check-circle me-1"></i>Verificado</span>
+                      } @else if (u.estado === 'Suspendido') {
+                        <span class="badge text-bg-warning text-dark"><i class="bi bi-clock-history me-1"></i>Suspendido</span>
+                        @if (u.suspendido_hasta) {
+                          <div class="small text-muted mt-1">
+                            Hasta: {{ u.suspendido_hasta | date: 'dd/MM/yyyy HH:mm' }}
+                          </div>
+                        }
+                      } @else if (u.estado === 'Baneado') {
+                        <span class="badge text-bg-danger"><i class="bi bi-slash-circle me-1"></i>Baneado permanente</span>
+                      } @else {
+                        <span class="badge text-bg-secondary">{{ u.estado }}</span>
+                      }
+
+                      @if (u.motivo_sancion) {
+                        <div class="small text-danger mt-1" style="max-width: 16rem">
+                          <i class="bi bi-info-circle me-1"></i>{{ u.motivo_sancion }}
+                        </div>
+                      }
+                    </td>
+                    <td class="text-end text-nowrap">
+                      <div class="btn-group">
+                        @if (u.estado !== 'Baneado') {
+                          <button
+                            class="btn btn-sm btn-outline-warning"
+                            title="Suspender temporalmente por 1, 7 o 30 días"
+                            [disabled]="procesandoAccion() === u.id"
+                            (click)="suspenderVecino(u)"
+                          >
+                            <i class="bi bi-pause-circle me-1"></i>Suspender
+                          </button>
+                          <button
+                            class="btn btn-sm btn-outline-danger"
+                            title="Banear permanentemente"
+                            [disabled]="procesandoAccion() === u.id"
+                            (click)="banearVecino(u)"
+                          >
+                            <i class="bi bi-slash-circle me-1"></i>Banear
+                          </button>
+                        }
+                        @if (u.estado === 'Suspendido' || u.estado === 'Baneado' || u.strikes > 0) {
+                          <button
+                            class="btn btn-sm btn-outline-success"
+                            title="Restablecer cuenta a Verificado y 0 strikes"
+                            [disabled]="procesandoAccion() === u.id"
+                            (click)="reactivarVecino(u)"
+                          >
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Reactivar
+                          </button>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="6">
+                      <div class="vacio py-4"><i class="bi bi-people"></i>No hay vecinos registrados.</div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
         </div>
       }
       @case ('estadisticas') {

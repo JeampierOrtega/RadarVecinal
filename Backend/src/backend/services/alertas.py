@@ -4,7 +4,8 @@ from uuid import uuid4
 from backend.repositories.alertas import AlertaRepository, alerta_repository
 from backend.schemas.paneles import Alerta
 from backend.schemas.usuarios import UsuarioDB
-from backend.services.exceptions import SolicitudIncorrectaError
+from backend.services.exceptions import NoEncontradoError, SolicitudIncorrectaError
+from backend.services.usuarios import usuario_service
 
 DURACION_ALERTA = timedelta(minutes=30)
 
@@ -31,8 +32,26 @@ class AlertaService:
             id_barrio=usuario.id_barrio,
             inicio=ahora,
             expira=ahora + DURACION_ALERTA,
+            id_usuario=usuario.id,
         )
         return self._repository.set(alerta)
+
+    def cancelar(self, id_alerta: str, motivo: str) -> dict[str, str]:
+        alerta = self._repository.get_por_id(id_alerta)
+        if alerta is None:
+            raise NoEncontradoError("una alerta", id_alerta)
+
+        if motivo == "falsa_alarma" and alerta.id_usuario:
+            usuario_service.registrar_strike(
+                alerta.id_usuario,
+                f"Falsa alarma de pánico activada en barrio {alerta.nombre_barrio or alerta.id_barrio}",
+            )
+            mensaje = "Alerta cancelada por falsa alarma (+1 strike aplicado al autor)."
+        else:
+            mensaje = "Alerta atendida con éxito."
+
+        self._repository.delete(id_alerta)
+        return {"detail": mensaje}
 
 
 alerta_service = AlertaService()

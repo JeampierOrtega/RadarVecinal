@@ -25,6 +25,10 @@ export interface ReportePublico {
   confirmaciones: number;
   /** Cuántos vecinos lo denunciaron para revisión. */
   denuncias: number;
+  incorrectos: number;
+  autor_nombre?: string | null;
+  autor_dni?: string | null;
+  autor_strikes?: number | null;
 }
 
 /** Reporte propio (incluye id_usuario). */

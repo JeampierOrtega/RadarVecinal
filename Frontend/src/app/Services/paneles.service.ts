@@ -40,4 +40,8 @@ export class PanelesService {
   activarAlerta(): Promise<Alerta> {
     return this.api.post('/alertas');
   }
+
+  cancelarAlerta(id: string, motivo: 'atendida' | 'falsa_alarma'): Promise<{ detail: string }> {
+    return this.api.post(`/alertas/${id}/cancelar`, { motivo });
+  }
 }

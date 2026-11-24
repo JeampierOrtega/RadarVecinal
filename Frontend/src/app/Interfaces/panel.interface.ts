@@ -8,6 +8,11 @@ export interface Alerta {
   id_barrio: string;
   inicio: string;
   expira: string;
+  id_usuario?: string | null;
+  autor_nombre?: string | null;
+  autor_dni?: string | null;
+  nombre_barrio?: string | null;
+  minutos_restantes?: number | null;
 }
 
 export interface PanelMunicipal {
@@ -15,7 +20,9 @@ export interface PanelMunicipal {
   criticos: ZonaResumen[];
   acciones: Accion[];
   propias: Accion[];
-  pendientes: Usuario[];
+  pendientes?: Usuario[];
+  vecinos: Usuario[];
+  alertas: Alerta[];
   reportes: ReportePublico[];
   puntos: PuntoCaliente[];
 }

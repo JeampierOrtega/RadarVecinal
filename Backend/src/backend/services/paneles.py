@@ -6,6 +6,7 @@ from backend.schemas.reportes import Reporte
 from backend.schemas.usuarios import UsuarioDB
 from backend.schemas.zonas import PuntoCaliente, ZonaResumen
 from backend.services.acciones import AccionService, accion_service
+from backend.services.alertas import AlertaService, alerta_service
 from backend.services.exceptions import SolicitudIncorrectaError
 from backend.services.reportes import ReporteService, reporte_service
 from backend.services.temperatura import peso_reporte
@@ -23,24 +24,30 @@ class PanelService:
         acciones: AccionService | None = None,
         usuarios: UsuarioService | None = None,
         acciones_repo: AccionRepository | None = None,
+        alertas: AlertaService | None = None,
     ) -> None:
         self._zonas = zonas or zona_service
         self._reportes = reportes or reporte_service
         self._acciones = acciones or accion_service
         self._usuarios = usuarios or usuario_service
         self._acciones_repo = acciones_repo or accion_repository
+        self._alertas = alertas or alerta_service
 
     # --- Municipalidad ---
     def panel_municipal(self, usuario: UsuarioDB) -> PanelMunicipal:
         zonas = self._zonas.resumen()
         acciones = self._acciones.listar()
-        reportes = self._reportes.listar()
+        reportes = self._reportes.listar_para_municipalidad()
+        alertas = self._alertas.activas()
+        vecinos = [u for u in self._usuarios.listar() if u.rol == "vecino"]
         return PanelMunicipal(
             zonas=zonas,
             criticos=self._barrios_criticos(zonas),
             acciones=acciones,
             propias=[a for a in acciones if a.id_autoridad == usuario.id],
-            pendientes=self._usuarios.listar("Pendiente"),
+            pendientes=[],
+            vecinos=vecinos,
+            alertas=alertas,
             reportes=reportes,
             puntos=self._puntos_calientes(reportes),
         )
