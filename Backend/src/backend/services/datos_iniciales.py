@@ -262,8 +262,9 @@ CODIGOS_INICIALES = [
 
 SQL_USUARIO = """
     INSERT INTO usuarios
-        (id, nombre, dni, correo, clave_hash, rol, id_barrio, estado, fecha_registro, institucion)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        (id, nombre, dni, correo, clave_hash, rol, id_barrio, estado, fecha_registro, institucion,
+         strikes, suspendido_hasta, motivo_sancion)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     ON CONFLICT DO NOTHING
 """
 
@@ -354,6 +355,9 @@ def _cargar_usuarios(conn: Connection, ahora: datetime, barrios: list[Barrio]) -
                 "Verificado",
                 ahora - timedelta(days=60),
                 None,
+                0,
+                None,
+                None,
             )
         )
 
@@ -377,6 +381,9 @@ def _cargar_usuarios(conn: Connection, ahora: datetime, barrios: list[Barrio]) -
                 "Pendiente",
                 ahora - timedelta(days=i),
                 None,
+                0,
+                None,
+                None,
             )
         )
 
@@ -393,6 +400,9 @@ def _cargar_usuarios(conn: Connection, ahora: datetime, barrios: list[Barrio]) -
             "Verificado",
             ahora - timedelta(days=90),
             "Municipalidad",
+            0,
+            None,
+            None,
         )
     )
 

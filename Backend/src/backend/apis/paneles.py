@@ -2,9 +2,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 
-from backend.apis.dependencias import MunicipalidadDep, UsuarioDep, VecinoDep
+from backend.apis.dependencias import IdPath, MunicipalidadDep, UsuarioDep, VecinoDep
 from backend.schemas.paneles import (
     Alerta,
+    CancelarAlertaRequest,
     MiBarrio,
     NoticiasLeidas,
     NoticiasNuevas,
@@ -67,3 +68,17 @@ def alertas_activas(_: UsuarioDep, service: AlertaDep) -> list[Alerta]:
 )
 def activar_alerta(vecino: VecinoDep, service: AlertaDep) -> Alerta:
     return service.activar(vecino)
+
+
+@router.post(
+    "/alertas/{id_alerta}/cancelar",
+    response_model=dict[str, str],
+    summary="Cancelar alerta de barrio: atendida o falsa alarma (+1 strike) (Municipalidad)",
+)
+def cancelar_alerta(
+    id_alerta: IdPath,
+    datos: CancelarAlertaRequest,
+    _: MunicipalidadDep,
+    service: AlertaDep,
+) -> dict[str, str]:
+    return service.cancelar(id_alerta, datos.motivo)

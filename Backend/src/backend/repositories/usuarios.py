@@ -7,7 +7,8 @@ from backend.schemas.usuarios import UsuarioDB
 
 # Columnas en el mismo orden y con los mismos nombres que el modelo Pydantic.
 _COLUMNAS = (
-    "id, nombre, dni, correo, clave_hash, rol, id_barrio, estado, fecha_registro, institucion"
+    "id, nombre, dni, correo, clave_hash, rol, id_barrio, estado, fecha_registro, institucion, "
+    "strikes, suspendido_hasta, motivo_sancion"
 )
 
 
@@ -48,8 +49,8 @@ class UsuarioRepository:
                 """
                 INSERT INTO usuarios
                     (id, nombre, dni, correo, clave_hash, rol, id_barrio, estado,
-                     fecha_registro, institucion)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                     fecha_registro, institucion, strikes, suspendido_hasta, motivo_sancion)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (id) DO NOTHING
                 """,
                 (
@@ -63,6 +64,9 @@ class UsuarioRepository:
                     usuario.estado,
                     usuario.fecha_registro,
                     usuario.institucion,
+                    usuario.strikes,
+                    usuario.suspendido_hasta,
+                    usuario.motivo_sancion,
                 ),
             )
         return usuario
@@ -73,7 +77,8 @@ class UsuarioRepository:
                 """
                 UPDATE usuarios
                    SET nombre = %s, dni = %s, correo = %s, clave_hash = %s, rol = %s,
-                       id_barrio = %s, estado = %s, institucion = %s
+                       id_barrio = %s, estado = %s, institucion = %s,
+                       strikes = %s, suspendido_hasta = %s, motivo_sancion = %s
                  WHERE id = %s
                 """,
                 (
@@ -85,6 +90,9 @@ class UsuarioRepository:
                     usuario.id_barrio,
                     usuario.estado,
                     usuario.institucion,
+                    usuario.strikes,
+                    usuario.suspendido_hasta,
+                    usuario.motivo_sancion,
                     usuario.id,
                 ),
             )

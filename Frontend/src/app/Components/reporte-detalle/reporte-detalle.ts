@@ -92,13 +92,17 @@ export class ReporteDetalle implements OnInit {
     if (this.enviando()) return;
     const texto =
       estado === 'falso'
-        ? 'Se marcará como falso y dejará de sumar temperatura.'
+        ? 'Se marcará como falso, dejará de sumar temperatura y se aplicará +1 Strike al autor.'
         : 'Se archivará y desaparecerá del mapa.';
     if (!(await this.avisos.confirmar('¿Moderar este reporte?', texto, 'Sí, continuar', true)))
       return;
     this.enviando.set(true);
     try {
-      await this.reportes.moderar(this.id(), estado);
+      if (estado === 'falso') {
+        await this.reportes.moderarAccion(this.id(), 'marcar_falso');
+      } else {
+        await this.reportes.moderar(this.id(), estado);
+      }
       this.avisos.exito('Reporte actualizado.');
       this.cambiado.emit();
       this.cerrar.emit();

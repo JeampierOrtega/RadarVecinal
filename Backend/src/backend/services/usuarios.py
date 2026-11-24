@@ -1,11 +1,12 @@
 import hashlib
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from backend.repositories.barrios import BarrioRepository, barrio_repository
 from backend.repositories.usuarios import UsuarioRepository, usuario_repository
 from backend.schemas.usuarios import (
     Login,
+    ModerarUsuarioRequest,
     UsuarioDB,
     UsuarioRegistro,
     UsuarioUpdate,
@@ -40,11 +41,38 @@ class UsuarioService:
         self._barrios = barrios or barrio_repository
 
     # --- sesión ---
+    def _verificar_sanciones(self, usuario: UsuarioDB) -> UsuarioDB:
+        """Aplica bloqueos si el usuario está Baneado o Suspendido (o levanta la suspensión vencida)."""
+        if usuario.estado == "Baneado":
+            raise AccesoDenegadoError(
+                "Tu cuenta ha sido bloqueada permanentemente por infracciones reiteradas"
+            )
+        if usuario.estado == "Suspendido":
+            ahora = datetime.now(UTC)
+            hasta = usuario.suspendido_hasta
+            if hasta and hasta.tzinfo is None:
+                hasta = hasta.replace(tzinfo=UTC)
+            if hasta and hasta > ahora:
+                raise AccesoDenegadoError(
+                    f"Tu cuenta está suspendida temporalmente hasta {hasta.strftime('%d/%m/%Y %H:%M')}."
+                )
+            # La suspensión venció: se levanta automáticamente volviendo a 'Verificado'
+            usuario = self._repository.update(
+                usuario.model_copy(
+                    update={
+                        "estado": "Verificado",
+                        "suspendido_hasta": None,
+                        "motivo_sancion": None,
+                    }
+                )
+            )
+        return usuario
+
     def login(self, datos: Login) -> UsuarioDB:
         usuario = self._repository.get_by_correo(datos.correo.lower())
         if usuario is None or usuario.clave_hash != hashear(datos.clave):
             raise NoAutenticadoError("Correo o contraseña incorrectos. Revisa tus credenciales.")
-        return usuario
+        return self._verificar_sanciones(usuario)
 
     def usuario_actual(self, id_usuario: str | None) -> UsuarioDB:
         """Identifica al usuario por el encabezado X-Usuario-Id (sesión simplificada)."""
@@ -53,7 +81,7 @@ class UsuarioService:
         usuario = self._repository.get(id_usuario)
         if usuario is None:
             raise NoAutenticadoError("Tu sesión ya no es válida. Vuelve a iniciar sesión.")
-        return usuario
+        return self._verificar_sanciones(usuario)
 
     # --- CRUD ---
     def registrar(self, datos: UsuarioRegistro) -> UsuarioDB:
@@ -126,5 +154,61 @@ class UsuarioService:
         nuevo_estado = "Verificado" if datos.decision == "aprobar" else "Rechazado"
         return self._repository.update(usuario.model_copy(update={"estado": nuevo_estado}))
 
+    # --- strikes y moderación (Municipalidad / sistema) ---
+    def registrar_strike(self, id_usuario: str, motivo: str) -> UsuarioDB:
+        """Centraliza la aplicación de strikes: al 3er strike aplica baneo automático."""
+        usuario = self.obtener(id_usuario)
+        nuevos_strikes = usuario.strikes + 1
+        cambios: dict[str, object] = {"strikes": nuevos_strikes}
+        if nuevos_strikes >= 3:
+            cambios["estado"] = "Baneado"
+            cambios["motivo_sancion"] = (
+                "Ban automático por acumular 3 infracciones (reportes falsos o falsas alarmas)"
+            )
+            cambios["suspendido_hasta"] = None
+        else:
+            cambios["motivo_sancion"] = (
+                motivo if not usuario.motivo_sancion else f"{usuario.motivo_sancion}; {motivo}"
+            )
+        return self._repository.update(usuario.model_copy(update=cambios))
+
+    def moderar(self, id_usuario: str, datos: ModerarUsuarioRequest) -> UsuarioDB:
+        """Modera un vecino desde la Municipalidad: suspender, banear o reactivar."""
+        usuario = self.obtener(id_usuario)
+        if usuario.rol == "municipalidad":
+            raise SolicitudIncorrectaError("No se puede moderar una cuenta de la Municipalidad.")
+
+        if datos.accion == "suspender":
+            dias = datos.dias if datos.dias in (1, 7, 30) else 1
+            suspendido_hasta = datetime.now(UTC) + timedelta(days=dias)
+            motivo = datos.motivo or f"Suspensión temporal por {dias} día(s)"
+            cambios = {
+                "estado": "Suspendido",
+                "suspendido_hasta": suspendido_hasta,
+                "motivo_sancion": motivo,
+            }
+        elif datos.accion == "banear":
+            motivo = datos.motivo or "Bloqueo permanente por moderación de la Municipalidad"
+            cambios = {
+                "estado": "Baneado",
+                "suspendido_hasta": None,
+                "motivo_sancion": motivo,
+            }
+        elif datos.accion == "reactivar":
+            cambios = {
+                "estado": "Verificado",
+                "strikes": 0,
+                "suspendido_hasta": None,
+                "motivo_sancion": None,
+            }
+        else:
+            raise SolicitudIncorrectaError(f"Acción '{datos.accion}' no válida.")
+
+        return self._repository.update(usuario.model_copy(update=cambios))
+
 
 usuario_service = UsuarioService()
+
+
+def registrar_strike(id_usuario: str, motivo: str) -> UsuarioDB:
+    return usuario_service.registrar_strike(id_usuario, motivo)

@@ -45,7 +45,10 @@ CREATE TABLE usuarios (
     rol             TEXT         NOT NULL CHECK (rol IN ('vecino', 'municipalidad')),
     id_barrio       TEXT REFERENCES barrios(id) ON UPDATE CASCADE ON DELETE SET NULL,
     estado          TEXT         NOT NULL DEFAULT 'Pendiente'
-        CHECK (estado IN ('Pendiente', 'Verificado', 'Rechazado')),
+        CHECK (estado IN ('Pendiente', 'Verificado', 'Rechazado', 'Suspendido', 'Baneado')),
+    strikes         SMALLINT     NOT NULL DEFAULT 0 CHECK (strikes >= 0),
+    suspendido_hasta TIMESTAMPTZ,
+    motivo_sancion  TEXT,
     fecha_registro  TIMESTAMPTZ  NOT NULL DEFAULT now(),
     institucion     TEXT
 );
@@ -149,6 +152,7 @@ CREATE TABLE iniciativa_participantes (
 CREATE TABLE alertas (
     id         TEXT PRIMARY KEY,
     id_barrio  TEXT NOT NULL UNIQUE REFERENCES barrios(id) ON UPDATE CASCADE ON DELETE CASCADE,
+    id_usuario TEXT REFERENCES usuarios(id) ON DELETE SET NULL,
     inicio     TIMESTAMPTZ NOT NULL,
     expira     TIMESTAMPTZ NOT NULL,
     CHECK (expira > inicio)

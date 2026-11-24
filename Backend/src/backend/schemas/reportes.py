@@ -52,6 +52,12 @@ class ModeracionReporte(BaseModel):
     estado: Literal["falso", "archivado"]
 
 
+class ModerarReporteAccion(BaseModel):
+    """Acción de moderación municipal: marcar falso (+1 strike) o purgar spam masivo y banear."""
+
+    accion: Literal["marcar_falso", "purgar_spam"]
+
+
 class ReportePublico(BaseModel):
     """Reporte sin datos del autor: es lo que ve cualquier usuario (anónimo)."""
 
@@ -67,6 +73,11 @@ class ReportePublico(BaseModel):
     confirmaciones: int
     # Cuántos vecinos lo denunciaron para revisión (0 si nadie lo ha hecho).
     denuncias: int = 0
+    incorrectos: int = 0
+    # Datos del autor visibles únicamente para el panel de la Municipalidad
+    autor_nombre: str | None = None
+    autor_dni: str | None = None
+    autor_strikes: int | None = None
 
 
 class Reporte(ReportePublico):

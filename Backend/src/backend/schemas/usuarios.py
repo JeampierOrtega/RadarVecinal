@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 # Solo dos actores en el sistema.
 Rol = Literal["vecino", "municipalidad"]
-EstadoUsuario = Literal["Pendiente", "Verificado", "Rechazado"]
+EstadoUsuario = Literal["Pendiente", "Verificado", "Rechazado", "Suspendido", "Baneado"]
 
 CORREO_PATTERN = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
 DNI_PATTERN = r"^[0-9]{8}$"
@@ -48,6 +48,14 @@ class Verificacion(BaseModel):
     decision: Literal["aprobar", "rechazar"]
 
 
+class ModerarUsuarioRequest(BaseModel):
+    """Acciones de moderación que aplica la Municipalidad a un vecino."""
+
+    accion: Literal["suspender", "banear", "reactivar"]
+    dias: int | None = None  # 1, 7 o 30
+    motivo: str | None = None
+
+
 class Usuario(BaseModel):
     """Usuario tal como se devuelve al frontend (sin contraseña)."""
 
@@ -60,6 +68,9 @@ class Usuario(BaseModel):
     estado: EstadoUsuario
     fecha_registro: datetime
     institucion: str | None = None
+    strikes: int = 0
+    suspendido_hasta: datetime | None = None
+    motivo_sancion: str | None = None
 
 
 class UsuarioDB(Usuario):

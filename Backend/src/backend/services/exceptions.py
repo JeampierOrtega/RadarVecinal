@@ -35,3 +35,7 @@ class NoEncontradoError(Exception):
 
 class ConflictoError(Exception):
     """409: la acción choca con el estado actual (duplicado, ya realizada, etc.)."""
+
+
+class LimiteExcedidoError(Exception):
+    """429: Demasiadas solicitudes o rate limit alcanzado."""

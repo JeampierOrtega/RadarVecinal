@@ -87,8 +87,10 @@ END $$;
 
 CREATE INDEX IF NOT EXISTS idx_usuarios_dni ON usuarios(dni);
 
--- 4. Actualizar la vista v_usuarios para incluir el DNI
-CREATE OR REPLACE VIEW v_usuarios AS
+
+
+DROP VIEW IF EXISTS v_usuarios;
+CREATE VIEW v_usuarios AS
 SELECT u.id, u.nombre, u.dni, u.correo, u.rol, u.estado,
        b.nombre AS barrio, u.institucion, u.fecha_registro
 FROM usuarios u
