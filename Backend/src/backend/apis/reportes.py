@@ -12,6 +12,7 @@ from backend.apis.dependencias import (
 )
 from backend.schemas.reportes import (
     ModeracionReporte,
+    ModerarReporteAccion,
     Reporte,
     ReporteCreate,
     ReporteDetalle,
@@ -103,7 +104,18 @@ def denunciar_reporte(id_reporte: IdPath, vecino: VecinoDep, service: ServiceDep
     response_model=ReportePublico,
     summary="Moderar: marcar como falso o archivar (Municipalidad)",
 )
-def moderar_reporte(
+def moderar_reporte_estado(
     id_reporte: IdPath, datos: ModeracionReporte, _: MunicipalidadDep, service: ServiceDep
 ) -> ReportePublico:
     return service.moderar(id_reporte, datos)
+
+
+@router.post(
+    "/{id_reporte}/moderar",
+    response_model=dict[str, str],
+    summary="Moderar: marcar falso (+1 strike) o purgar spam masivo y banear (Municipalidad)",
+)
+def moderar_reporte(
+    id_reporte: IdPath, datos: ModerarReporteAccion, _: MunicipalidadDep, service: ServiceDep
+) -> dict[str, str]:
+    return service.moderar_reporte(id_reporte, datos.accion)

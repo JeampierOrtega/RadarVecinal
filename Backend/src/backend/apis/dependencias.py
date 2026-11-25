@@ -4,6 +4,7 @@ Sesión simplificada: el frontend envía el encabezado `X-Usuario-Id` con el id 
 en el login. Más adelante se puede cambiar por un token JWT sin tocar los servicios.
 """
 
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from fastapi import Depends, Header, Path, Query
@@ -37,7 +38,20 @@ def get_usuario_sin_verificar(
 def get_usuario(
     usuario: Annotated[UsuarioDB, Depends(get_usuario_sin_verificar)],
 ) -> UsuarioDB:
-    """Usuario con cuenta verificada (403 si está pendiente o rechazada)."""
+    """Usuario con cuenta verificada (403 si está pendiente, rechazada, suspendida o baneada)."""
+    if usuario.estado == "Baneado":
+        raise AccesoDenegadoError(
+            "Tu cuenta ha sido bloqueada permanentemente por infracciones reiteradas"
+        )
+    if usuario.estado == "Suspendido":
+        ahora = datetime.now(UTC)
+        hasta = usuario.suspendido_hasta
+        if hasta and hasta.tzinfo is None:
+            hasta = hasta.replace(tzinfo=UTC)
+        if hasta and hasta > ahora:
+            raise AccesoDenegadoError(
+                f"Tu cuenta está suspendida temporalmente hasta {hasta.strftime('%d/%m/%Y %H:%M')}."
+            )
     if usuario.estado == "Pendiente":
         raise AccesoDenegadoError("Tu cuenta está pendiente de verificación por la Municipalidad.")
     if usuario.estado == "Rechazado":

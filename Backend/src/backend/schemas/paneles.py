@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.schemas.acciones import Accion
 from backend.schemas.reportes import ReportePublico
@@ -15,6 +16,15 @@ class Alerta(BaseModel):
     id_barrio: str
     inicio: datetime
     expira: datetime
+    id_usuario: str | None = None
+    autor_nombre: str | None = None
+    autor_dni: str | None = None
+    nombre_barrio: str | None = None
+    minutos_restantes: float | None = None
+
+
+class CancelarAlertaRequest(BaseModel):
+    motivo: Literal["atendida", "falsa_alarma"]
 
 
 class PanelMunicipal(BaseModel):
@@ -24,7 +34,9 @@ class PanelMunicipal(BaseModel):
     criticos: list[ZonaResumen]
     acciones: list[Accion]
     propias: list[Accion]
-    pendientes: list[Usuario]
+    pendientes: list[Usuario] = Field(default_factory=list)
+    vecinos: list[Usuario] = Field(default_factory=list)
+    alertas: list[Alerta] = Field(default_factory=list)
     reportes: list[ReportePublico]
     puntos: list[PuntoCaliente]
 

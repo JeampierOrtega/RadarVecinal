@@ -1,7 +1,8 @@
 DROP VIEW IF EXISTS v_conteo_tablas, v_resumen_barrios, v_alertas_activas, v_iniciativas, v_acciones, v_reportes, v_usuarios;
 
 CREATE VIEW v_usuarios AS
-SELECT u.id, u.nombre, u.correo, u.rol, u.estado,
+SELECT u.id, u.nombre, u.dni, u.correo, u.rol, u.estado,
+       u.strikes, u.suspendido_hasta, u.motivo_sancion,
        b.nombre AS barrio, u.institucion, u.fecha_registro
 FROM usuarios u
 LEFT JOIN barrios b ON b.id = u.id_barrio
@@ -38,9 +39,11 @@ ORDER BY i.fecha_creacion DESC;
 
 CREATE VIEW v_alertas_activas AS
 SELECT a.id, b.nombre AS barrio, a.inicio, a.expira,
-       round(extract(epoch FROM (a.expira - now())) / 60.0, 1) AS minutos_restantes
+       round(extract(epoch FROM (a.expira - now())) / 60.0, 1) AS minutos_restantes,
+       a.id_usuario, u.nombre AS autor_nombre, u.dni AS autor_dni
 FROM alertas a
 JOIN barrios b ON b.id = a.id_barrio
+LEFT JOIN usuarios u ON u.id = a.id_usuario
 WHERE a.expira > now()
 ORDER BY a.expira;
 
@@ -56,6 +59,7 @@ ORDER BY length(b.id), b.id;
 
 CREATE VIEW v_conteo_tablas AS
           SELECT 'barrios'                  AS tabla, count(*) AS filas FROM barrios
+UNION ALL SELECT 'codigos_barrio',           count(*) FROM codigos_barrio
 UNION ALL SELECT 'usuarios',                 count(*) FROM usuarios
 UNION ALL SELECT 'reportes',                 count(*) FROM reportes
 UNION ALL SELECT 'votos_reporte',            count(*) FROM votos_reporte

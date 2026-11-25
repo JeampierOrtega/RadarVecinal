@@ -14,9 +14,15 @@ _SELECT = """
            r.fecha, r.estado, r.id_usuario,
            (SELECT count(*) FROM votos_reporte v
              WHERE v.id_reporte = r.id AND v.voto = 'confirmo') AS confirmaciones,
+           (SELECT count(*) FROM votos_reporte v
+             WHERE v.id_reporte = r.id AND v.voto = 'incorrecto') AS incorrectos,
            (SELECT count(*) FROM denuncias_reporte d
-             WHERE d.id_reporte = r.id) AS denuncias
+             WHERE d.id_reporte = r.id) AS denuncias,
+           u.nombre AS autor_nombre,
+           u.dni AS autor_dni,
+           u.strikes AS autor_strikes
       FROM reportes r
+      LEFT JOIN usuarios u ON u.id = r.id_usuario
 """
 
 
@@ -97,6 +103,20 @@ class ReporteRepository:
                 "DELETE FROM reportes WHERE id = %s RETURNING id", (id_reporte,)
             ).fetchone()
         return fila is not None
+
+    def purgar_por_usuario(self, id_usuario: str) -> int:
+        """Marca como 'falso' todos los reportes activos y confirmados de un usuario."""
+        with conexion() as conn:
+            filas = conn.execute(
+                """
+                UPDATE reportes
+                   SET estado = 'falso'
+                 WHERE id_usuario = %s AND estado IN ('activo', 'confirmado')
+                RETURNING id
+                """,
+                (id_usuario,),
+            ).fetchall()
+        return len(filas)
 
     # --- votos ---
     def votos_de(self, id_reporte: str) -> dict[str, str]:

@@ -25,7 +25,7 @@ export class AlertaBoton {
     if (this.activando()) return;
     const ok = await this.avisos.confirmar(
       '¿Activar alerta en tu barrio?',
-      'Tu barrio quedará EN ALERTA durante 30 minutos para todos.',
+      'Tu barrio quedará EN ALERTA durante 30 minutos para todos.\n\n⚠️ ¡Atención! La emisión de falsas alarmas conlleva sanciones (+1 Strike) y el bloqueo permanente del DNI (3 strikes = Ban definitivo).',
       'Activar alerta',
       true,
     );

@@ -8,7 +8,13 @@ from backend.apis.dependencias import (
     UsuarioDep,
     get_usuario_service,
 )
-from backend.schemas.usuarios import EstadoUsuario, Usuario, UsuarioUpdate, Verificacion
+from backend.schemas.usuarios import (
+    EstadoUsuario,
+    ModerarUsuarioRequest,
+    Usuario,
+    UsuarioUpdate,
+    Verificacion,
+)
 from backend.services.usuarios import UsuarioService
 
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
@@ -53,3 +59,14 @@ def verificar_usuario(
     id_usuario: IdPath, datos: Verificacion, _: MunicipalidadDep, service: ServiceDep
 ) -> Usuario:
     return service.verificar(id_usuario, datos)
+
+
+@router.post(
+    "/{id_usuario}/moderar",
+    response_model=Usuario,
+    summary="Moderar vecino: suspender, banear o reactivar (Municipalidad)",
+)
+def moderar_usuario(
+    id_usuario: IdPath, datos: ModerarUsuarioRequest, _: MunicipalidadDep, service: ServiceDep
+) -> Usuario:
+    return service.moderar(id_usuario, datos)
