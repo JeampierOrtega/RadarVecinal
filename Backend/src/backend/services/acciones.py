@@ -1,5 +1,4 @@
 from datetime import UTC, date, datetime
-from uuid import uuid4
 
 from backend.repositories.acciones import AccionRepository, accion_repository
 from backend.repositories.barrios import BarrioRepository, barrio_repository
@@ -108,7 +107,7 @@ class AccionService:
             **datos.model_dump(exclude={"fecha", "id_reporte", "id_barrio"}),
             id_barrio=id_barrio,
             fecha=_fecha_a_datetime(datos.fecha),
-            id=f"a_{uuid4().hex[:8]}",
+            id=self._repository.siguiente_id(),
             id_autoridad=usuario.id,
             institucion=usuario.institucion or "Municipalidad",
             id_reporte=datos.id_reporte,

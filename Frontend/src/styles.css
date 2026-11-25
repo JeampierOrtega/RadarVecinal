@@ -890,31 +890,241 @@ details[open].card summary::after {
   display: none;
 }
 
-/* Tooltip de un punto de reporte: varias líneas y texto del vecino, sin HTML. */
+/* Tooltip de un punto de reporte: una sola línea, sin descripción del vecino.
+   El contenido se arma con DOM + textContent desde mapa-calor.ts. */
 .leaflet-tooltip.tooltip-reporte {
-  max-width: 250px;
-  padding: 0.55rem 0.7rem;
-  text-align: left;
-  white-space: normal;
-  line-height: 1.35;
+  padding: 0.3rem 0.55rem;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.tt-linea {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  line-height: 1.2;
+}
+.tt-punto {
+  width: 0.55rem;
+  height: 0.55rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--heat-verde);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.28);
+}
+.tt-punto.heat-amarillo {
+  background: var(--heat-amarillo);
+}
+.tt-punto.heat-naranja {
+  background: var(--heat-naranja);
+}
+.tt-punto.heat-rojo {
+  background: var(--heat-rojo);
+}
+.tt-tipo {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #fff;
+}
+.tt-hace {
+  font-size: 0.7rem;
   font-weight: 500;
+  color: #a9c0d1;
 }
-.tooltip-reporte-titulo {
-  display: block;
-  font-weight: 800;
+
+/* Popup de un reporte (clic en el punto): tarjeta de 280-320 px. */
+.leaflet-popup-pane {
+  z-index: 900;
+}
+.leaflet-popup.popup-reporte {
+  max-width: min(320px, calc(100vw - 2rem));
+}
+.leaflet-popup.popup-reporte .leaflet-popup-content-wrapper {
+  padding: 0;
+  border-radius: 0.9rem;
+  background: #fff;
+  box-shadow: var(--radar-sombra);
+}
+.leaflet-popup.popup-reporte .leaflet-popup-content {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.85rem 0.95rem 0.9rem;
   font-size: 0.8rem;
+  color: var(--radar-texto);
 }
-.tooltip-reporte-desc {
-  display: block;
-  margin-top: 0.15rem;
-  color: #dbe8f2;
+.leaflet-popup.popup-reporte .leaflet-popup-tip {
+  background: #fff;
+}
+.leaflet-popup.popup-reporte .leaflet-popup-close-button {
+  top: 0.35rem;
+  right: 0.4rem;
+  color: var(--radar-texto-suave);
+  font-size: 1.1rem;
+}
+.popup-reporte-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.pr-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-right: 1.1rem;
+}
+.pr-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  background: var(--radar-fondo);
+  font-weight: 700;
+  font-size: 0.76rem;
+}
+.pr-chip .pr-punto {
+  width: 0.55rem;
+  height: 0.55rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--heat-verde);
+}
+.pr-chip.nivel-amarillo .pr-punto {
+  background: var(--heat-amarillo);
+}
+.pr-chip.nivel-naranja .pr-punto {
+  background: var(--heat-naranja);
+}
+.pr-chip.nivel-rojo .pr-punto {
+  background: var(--heat-rojo);
+}
+.pr-tipo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pr-estado {
+  flex: 0 0 auto;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.pr-fila .pr-estado {
+  margin-left: auto;
+}
+.estado-activo {
+  background: #e8f0f6;
+  color: #37546c;
+}
+.estado-confirmado {
+  background: var(--radar-verde-suave);
+  color: #0f7357;
+}
+.estado-falso {
+  background: #fdecea;
+  color: #a4241a;
+}
+.estado-archivado {
+  background: #eef1f4;
+  color: #5d6b78;
+}
+.pr-desc {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+  overflow: hidden;
+  margin: 0;
+  line-height: 1.4;
   overflow-wrap: anywhere;
 }
-.tooltip-reporte-meta {
+.pr-filas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+}
+.pr-fila {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+.pr-fila > .bi {
+  width: 0.95rem;
+  color: var(--radar-texto-suave);
+  text-align: center;
+}
+.pr-etiqueta {
+  color: var(--radar-texto-suave);
+}
+.pr-valor {
+  margin-left: auto;
+  font-weight: 700;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pr-valor.nivel-verde {
+  color: #1d8d58;
+}
+.pr-valor.nivel-amarillo {
+  color: #a37700;
+}
+.pr-valor.nivel-naranja {
+  color: #b45f0a;
+}
+.pr-valor.nivel-rojo {
+  color: #b3261e;
+}
+.pr-barra {
+  height: 0.35rem;
+  margin-left: 1.4rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #e9eff3;
+}
+.pr-barra > span {
   display: block;
-  margin-top: 0.35rem;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--heat-verde);
+}
+.pr-barra.nivel-amarillo > span {
+  background: var(--heat-amarillo);
+}
+.pr-barra.nivel-naranja > span {
+  background: var(--heat-naranja);
+}
+.pr-barra.nivel-rojo > span {
+  background: var(--heat-rojo);
+}
+.pr-votos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.pr-voto {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.45rem;
+  border-radius: 0.5rem;
+  background: var(--radar-fondo);
   font-size: 0.7rem;
-  color: #a9c0d1;
+  font-weight: 600;
+  color: #476178;
+}
+.pr-ver {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
 /* Panes del mapa de calor: solo capturan el ratón los trazos clicables, para que las

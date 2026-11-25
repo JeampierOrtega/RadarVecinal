@@ -1,6 +1,7 @@
 import {
   Component,
   ElementRef,
+  HostListener,
   OnInit,
   computed,
   effect,
@@ -77,6 +78,8 @@ export class Mapa implements OnInit {
   protected readonly reporteId = signal<string | null>(null);
   protected readonly accionVista = signal<Accion | null>(null);
   protected readonly reporteRespondido = signal<ReportePublico | null>(null);
+  /** En móvil, "Actividad reciente" se abre como hoja inferior. */
+  protected readonly actividadAbierta = signal(false);
 
   // Controles del mapa (estilo Google Maps).
   protected readonly base = signal<BaseMapa>('mapa');
@@ -132,6 +135,30 @@ export class Mapa implements OnInit {
     return this.zonas().find((z) => z.id === this.zonaId());
   }
 
+  /** El panel del barrio reemplaza a "Actividad reciente" en la columna derecha. */
+  protected abrirZona(id: string): void {
+    this.actividadAbierta.set(false);
+    this.zonaId.set(id);
+  }
+
+  /** Cierra el barrio y vuelve a la actividad; también lo disparan Esc y el clic en el mapa. */
+  protected cerrarZona(): void {
+    if (this.zonaId()) this.zonaId.set(null);
+    this.actividadAbierta.set(false);
+  }
+
+  protected abrirActividad(): void {
+    this.actividadAbierta.set(true);
+  }
+
+  @HostListener('document:keydown.escape')
+  protected alPresionarEscape(): void {
+    // Los modales abiertos se cierran solos; aquí solo se resuelve el mapa.
+    if (this.reporteId() || this.accionVista() || this.reporteRespondido()) return;
+    if (this.reportando()) return;
+    this.cerrarZona();
+  }
+
   protected accionesDe(idBarrio: string): Accion[] {
     return this.acciones().filter((a) => a.id_barrio === idBarrio);
   }
@@ -172,6 +199,7 @@ export class Mapa implements OnInit {
 
   protected iniciarReporte(): void {
     this.zonaId.set(null);
+    this.actividadAbierta.set(false);
     this.punto.set(null);
     this.reportando.set(true);
   }
@@ -195,7 +223,7 @@ export class Mapa implements OnInit {
 
   /** Selecciona un barrio desde el buscador y vuela hasta él. */
   protected elegirZona(zona: ZonaResumen): void {
-    this.zonaId.set(zona.id);
+    this.abrirZona(zona.id);
     this.busqueda.set('');
     this.mapaCalor()?.centrarBarrio(zona);
   }
@@ -223,7 +251,7 @@ export class Mapa implements OnInit {
   }
 
   protected verCiudad(): void {
-    this.zonaId.set(null);
+    this.cerrarZona();
     this.mapaCalor()?.verCiudad(this.zonas());
   }
 

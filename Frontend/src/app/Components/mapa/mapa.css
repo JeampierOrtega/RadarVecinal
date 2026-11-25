@@ -2,6 +2,7 @@
   position: relative;
   height: 100vh;
   height: 100dvh;
+  overflow: hidden;
 }
 .pantalla:fullscreen {
   height: 100vh;
@@ -13,26 +14,46 @@
   }
 }
 
-.flotante {
+/* ==========================================================================
+   Una sola capa de superposición sobre el mapa.
+   El contenedor no captura el ratón; cada panel sí. Ningún panel se posiciona
+   por su cuenta, así que no pueden solaparse entre ellos.
+   ========================================================================== */
+.capa-paneles {
   position: absolute;
+  inset: 0;
   z-index: 800;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(10rem, 18rem) min(19rem, 26vw);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'filtros aviso derecha'
+    'controles . derecha'
+    'leyenda . acciones';
+  gap: 0.6rem 0.75rem;
+  padding: 0.75rem;
+  pointer-events: none;
 }
-.flotante.card {
+.capa-paneles .card {
   border: 1px solid rgba(221, 231, 239, 0.92);
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 22px 44px -34px rgba(8, 34, 56, 0.6);
   backdrop-filter: blur(14px);
+  min-width: 0;
+  pointer-events: auto;
 }
 
 /* --- Cabecera: marca + filtros --- */
 .cabecera-mapa {
-  top: 0.75rem;
-  left: 0.75rem;
+  grid-area: filtros;
+  justify-self: start;
+  align-self: start;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.85rem;
-  max-width: calc(100% - 1.5rem);
+  width: max-content;
+  max-width: min(34rem, 100%);
   padding: 0.6rem 0.7rem;
   border-radius: 1.05rem;
 }
@@ -149,14 +170,14 @@
 
 /* --- Controles del mapa --- */
 .controles-mapa {
-  top: 50%;
-  right: 0.75rem;
+  grid-area: controles;
+  justify-self: start;
+  align-self: start;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
   padding: 0.4rem;
   border-radius: 0.85rem;
-  transform: translateY(-50%);
 }
 .controles-base {
   display: flex;
@@ -205,12 +226,25 @@
   opacity: 0.6;
 }
 
+/* --- Columna derecha: estadísticas + actividad / panel del barrio --- */
+.columna-derecha {
+  grid-area: derecha;
+  justify-self: end;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
+  max-height: 100%;
+  min-height: 0;
+}
+
 /* --- Tarjeta de resumen --- */
 .resumen-mapa {
-  top: 0.75rem;
-  right: 0.75rem;
+  display: flex;
+  flex: 0 0 auto;
   flex-direction: column;
-  width: 14.5rem;
+  width: 100%;
   padding: 0.85rem 0.95rem;
   border-radius: 1.05rem;
 }
@@ -254,17 +288,22 @@
   font-weight: 600;
 }
 
-/* --- Actividad reciente --- */
+/* --- Actividad reciente (con scroll interno dentro de su espacio) --- */
 .actividad {
-  top: 12.6rem;
-  right: 0.75rem;
-  width: 19rem;
-  max-height: calc(100% - 22rem);
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  width: 100%;
+  min-height: 0;
   padding: 0.75rem;
   border-radius: 1.05rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .actividad-cabecera {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -272,6 +311,8 @@
   margin-bottom: 0.35rem;
   padding: 0 0.25rem 0.45rem;
   border-bottom: 1px dashed #e6eef4;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(8px);
 }
 .actividad-item {
   display: flex;
@@ -295,12 +336,36 @@
 .actividad-item .punto-nivel {
   flex-shrink: 0;
 }
+.btn-cerrar-actividad {
+  display: none !important;
+  width: 0.65rem;
+  height: 0.65rem;
+}
+.actividad-abrir {
+  display: none;
+  grid-area: actividad;
+  justify-self: start;
+  align-self: center;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid rgba(221, 231, 239, 0.92);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 14px 30px -24px rgba(8, 34, 56, 0.6);
+  color: #33506a;
+  font-size: 0.76rem;
+  font-weight: 700;
+  pointer-events: auto;
+}
 
 /* --- Leyenda --- */
 .leyenda {
-  bottom: 1rem;
-  left: 0.75rem;
+  grid-area: leyenda;
+  justify-self: start;
+  align-self: end;
   width: 16.5rem;
+  max-width: 100%;
   padding: 0.8rem 0.9rem;
   border-radius: 1rem;
 }
@@ -329,8 +394,18 @@
 
 /* --- Acciones del vecino --- */
 .acciones {
-  bottom: 2.4rem;
-  right: 0.75rem;
+  grid-area: acciones;
+  justify-self: end;
+  align-self: end;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 1.15rem;
+  pointer-events: none;
+}
+.acciones > * {
+  pointer-events: auto;
 }
 .boton-reportar {
   border-radius: 999px;
@@ -340,15 +415,15 @@
   font-size: 1.15rem;
 }
 
-/* --- Panel del barrio --- */
+/* --- Panel del barrio: ocupa la columna derecha --- */
 .panel {
-  top: 5.1rem;
-  left: 0.75rem;
-  width: min(22.5rem, calc(100% - 1.5rem));
-  max-height: calc(100% - 6rem);
-  overflow-y: auto;
+  flex: 0 1 auto;
+  width: 100%;
+  min-height: 0;
   padding: 0.95rem;
   border-radius: 1.1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   animation: radar-flotante 0.2s ease-out;
 }
 .panel-cabecera {
@@ -396,9 +471,14 @@
 .panel-accion + .panel-accion {
   border-top: 1px dashed #eef4f8;
 }
+.panel-volver {
+  font-size: 0.8rem;
+}
 
 /* --- Hoja del formulario --- */
 .hoja {
+  position: absolute;
+  z-index: 800;
   bottom: 0.5rem;
   left: 0.5rem;
   right: 0.5rem;
@@ -406,6 +486,8 @@
   overflow-y: auto;
   padding: 1rem;
   border-radius: 1.15rem;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 22px 44px -30px rgba(8, 34, 56, 0.6);
   animation: radar-flotante 0.2s ease-out;
 }
 .hoja-asidero {
@@ -435,22 +517,27 @@
   }
 }
 
-/* --- Avisos sobre el mapa --- */
+/* --- Aviso sobre el mapa (columna central libre) --- */
 .aviso-mapa {
-  top: 0.75rem;
-  left: 50%;
+  grid-area: aviso;
+  justify-self: center;
+  align-self: start;
   display: flex;
   align-items: center;
   gap: 0.55rem;
   width: max-content;
-  max-width: calc(100% - 1.5rem);
+  max-width: 100%;
   padding: 0.55rem 0.9rem;
   border: 1px solid rgba(221, 231, 239, 0.95);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 14px 30px -22px rgba(8, 34, 56, 0.6);
-  transform: translateX(-50%);
   backdrop-filter: blur(14px);
+  pointer-events: auto;
+}
+.aviso-mapa .small {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .error-mapa {
   border-color: #f0d5d2;
@@ -458,10 +545,28 @@
   color: #a93226;
 }
 
+/* ==========================================================================
+   Adaptaciones por ancho
+   ========================================================================== */
+@media (max-width: 1199.98px) {
+  .capa-paneles {
+    grid-template-columns: minmax(0, 1fr) minmax(9rem, 15rem) min(19rem, 30vw);
+  }
+}
+
+/* Tablet: el aviso baja a su propia fila y la columna derecha gana altura */
 @media (max-width: 991.98px) {
+  .capa-paneles {
+    grid-template-columns: minmax(0, 1fr) min(19rem, 34vw);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'filtros derecha'
+      'aviso derecha'
+      'controles derecha'
+      'leyenda acciones';
+  }
   .cabecera-mapa {
-    right: 0.75rem;
-    gap: 0.55rem;
+    width: 100%;
   }
   .cabecera-filtros {
     width: 100%;
@@ -471,60 +576,134 @@
     flex: 1;
     min-width: 0;
   }
-  .panel {
-    top: 7.6rem;
-    max-height: calc(100% - 9rem);
+  .aviso-mapa {
+    justify-self: stretch;
   }
 }
+
+/* Móvil: una columna + controles pegados al borde derecho */
 @media (max-width: 767.98px) {
-  .controles-mapa {
-    top: auto;
-    right: 0.75rem;
-    bottom: 8.2rem;
-    flex-direction: row;
-    transform: none;
+  .capa-paneles {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      'filtros filtros'
+      'aviso aviso'
+      'actividad controles'
+      'contenido controles'
+      'acciones acciones'
+      'leyenda leyenda';
+    gap: 0.45rem 0.5rem;
+    padding: 0.5rem;
   }
-  .controles-fila {
-    flex-direction: row;
+  .cabecera-mapa {
+    width: 100%;
   }
+  .columna-derecha {
+    display: contents;
+  }
+  .resumen-mapa {
+    display: none;
+  }
+  .actividad,
   .panel {
-    top: 8.5rem;
-    max-height: calc(100% - 9.5rem);
+    grid-area: contenido;
+    align-self: end;
+    width: 100%;
+    max-height: 100%;
+  }
+  .actividad:not(.abierta) {
+    display: none;
+  }
+  .actividad.abierta {
+    display: flex;
+  }
+  .btn-cerrar-actividad {
+    display: inline-grid !important;
+  }
+  .actividad-abrir {
+    display: inline-flex;
+  }
+  .controles-mapa {
+    justify-self: end;
+    align-self: center;
+    padding: 0.3rem;
+  }
+  .controles-base {
+    flex-direction: column;
+  }
+  .controles-base .control-texto {
+    display: none;
+  }
+  .controles-base button {
+    padding: 0.3rem 0.35rem;
+    text-align: center;
+  }
+  .controles-base i {
+    margin-right: 0;
   }
   .leyenda {
-    width: calc(100% - 9.5rem);
-    max-width: 15.5rem;
+    justify-self: stretch;
+    width: 100%;
+    max-width: none;
+    padding: 0.4rem 0.6rem;
   }
-  .aviso-mapa {
-    top: auto;
-    bottom: 4.8rem;
+  .leyenda-titulo {
+    margin-bottom: 0.2rem;
+    font-size: 0.6rem;
+  }
+  .leyenda .barra-calor {
+    height: 0.4rem;
+    margin-bottom: 0.2rem !important;
+  }
+  .leyenda-etiquetas {
+    font-size: 0.55rem;
+  }
+  .leyenda hr,
+  .leyenda-simbolos {
+    display: none;
+  }
+  .acciones {
+    margin-bottom: 0;
   }
   .acciones .btn-lg {
     font-size: 0.95rem;
     padding: 0.6rem 0.9rem;
   }
-}
-@media (max-width: 575.98px) {
+  .aviso-mapa {
+    justify-self: stretch;
+    border-radius: 0.85rem;
+  }
   .cabecera-sub {
     display: none;
   }
-  .cabecera-icono {
-    width: 2.1rem;
-    height: 2.1rem;
-    font-size: 1rem;
+}
+
+/* Alturas bajas: controles solo con iconos para no invadir otros espacios */
+@media (max-height: 768px) {
+  .controles-base .control-texto {
+    display: none;
+  }
+  .controles-base {
+    flex-direction: column;
+  }
+  .controles-base i {
+    margin-right: 0;
+  }
+  .controles-base button {
+    padding: 0.28rem 0.35rem;
   }
   .leyenda {
-    width: calc(100% - 1.5rem);
-    max-width: none;
-    bottom: 4.6rem;
+    padding: 0.6rem 0.75rem;
   }
   .leyenda-simbolos {
     display: none;
   }
-  .panel {
-    top: 7.6rem;
-    width: calc(100% - 1.5rem);
-    max-height: calc(100% - 12rem);
+  .leyenda hr {
+    display: none;
+  }
+  .actividad {
+    padding: 0.6rem;
   }
 }
 
@@ -544,4 +723,11 @@
   .hoja {
     animation: none;
   }
+  .actividad-item,
+  .btn,
+  .barra-heat > span {
+    transition: none !important;
+  }
 }
+
+

@@ -3,11 +3,15 @@ from __future__ import annotations
 from psycopg import Connection
 
 from backend.db import conexion
+from backend.repositories.secuencias import siguiente_id
 from backend.schemas.paneles import Alerta
 
 
 class AlertaRepository:
     """Una alerta como máximo por barrio, en la tabla `alertas`."""
+
+    def siguiente_id(self, conn: Connection | None = None) -> str:
+        return siguiente_id("al", "seq_alertas", conn)
 
     def list(self) -> list[Alerta]:
         with conexion() as conn:

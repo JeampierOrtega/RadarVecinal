@@ -1,7 +1,12 @@
+<<<<<<< Updated upstream
 import hashlib
 from datetime import UTC, datetime
 from uuid import uuid4
+=======
+from datetime import UTC, datetime, timedelta
+>>>>>>> Stashed changes
 
+from backend.core.seguridad import hashear, verificar_clave
 from backend.repositories.barrios import BarrioRepository, barrio_repository
 from backend.repositories.usuarios import UsuarioRepository, usuario_repository
 from backend.schemas.usuarios import (
@@ -20,14 +25,6 @@ from backend.services.exceptions import (
 )
 
 
-def hashear(clave: str) -> str:
-    """Hash simple para no guardar la contraseña en texto plano.
-
-    OJO: para producción se usa bcrypt/argon2; sha256 alcanza para esta demo.
-    """
-    return hashlib.sha256(clave.encode()).hexdigest()
-
-
 class UsuarioService:
     """Reglas de negocio de cuentas: registro, login, verificación y CRUD."""
 
@@ -42,9 +39,23 @@ class UsuarioService:
     # --- sesión ---
     def login(self, datos: Login) -> UsuarioDB:
         usuario = self._repository.get_by_correo(datos.correo.lower())
-        if usuario is None or usuario.clave_hash != hashear(datos.clave):
+        if usuario is None:
             raise NoAutenticadoError("Correo o contraseña incorrectos. Revisa tus credenciales.")
+<<<<<<< Updated upstream
         return usuario
+=======
+
+        valida, hash_nuevo = verificar_clave(datos.clave, usuario.clave_hash)
+        if not valida:
+            raise NoAutenticadoError("Correo o contraseña incorrectos. Revisa tus credenciales.")
+
+        if hash_nuevo is not None:
+            # Migración transparente: SHA-256 heredado -> Argon2id, o rehash de Argon2.
+            self._repository.actualizar_clave_hash(usuario.id, hash_nuevo)
+            usuario = usuario.model_copy(update={"clave_hash": hash_nuevo})
+
+        return self._verificar_sanciones(usuario)
+>>>>>>> Stashed changes
 
     def usuario_actual(self, id_usuario: str | None) -> UsuarioDB:
         """Identifica al usuario por el encabezado X-Usuario-Id (sesión simplificada)."""
@@ -63,7 +74,7 @@ class UsuarioService:
         if self._repository.get_by_correo(correo) is not None:
             raise ConflictoError(f"Ya existe una cuenta con el correo '{correo}'.")
         usuario = UsuarioDB(
-            id=f"v_{uuid4().hex[:8]}",
+            id=self._repository.siguiente_id("vecino"),
             nombre=datos.nombre,
             correo=correo,
             rol="vecino",

@@ -3,6 +3,7 @@ from __future__ import annotations
 from psycopg import Connection
 
 from backend.db import conexion
+from backend.repositories.secuencias import siguiente_id
 from backend.schemas.usuarios import UsuarioDB
 
 # Columnas en el mismo orden y con los mismos nombres que el modelo Pydantic.
@@ -10,9 +11,19 @@ _COLUMNAS = (
     "id, nombre, correo, clave_hash, rol, id_barrio, estado, fecha_registro, institucion"
 )
 
+_SECUENCIAS = {
+    "vecino": ("v", "seq_usuarios_vecinos"),
+    "municipalidad": ("m", "seq_usuarios_municipalidad"),
+}
+
 
 class UsuarioRepository:
     """Usuarios guardados en la tabla `usuarios` de PostgreSQL."""
+
+    def siguiente_id(self, rol: str, conn: Connection | None = None) -> str:
+        """Genera `v<n>` o `m<n>` con la secuencia correspondiente."""
+        prefijo, secuencia = _SECUENCIAS[rol]
+        return siguiente_id(prefijo, secuencia, conn)
 
     def list(self) -> list[UsuarioDB]:
         with conexion() as conn:
@@ -79,6 +90,14 @@ class UsuarioRepository:
                 ),
             )
         return usuario
+
+    def actualizar_clave_hash(self, id_usuario: str, clave_hash: str) -> None:
+        """Guarda un hash nuevo (migración transparente al iniciar sesión)."""
+        with conexion() as conn:
+            conn.execute(
+                "UPDATE usuarios SET clave_hash = %s WHERE id = %s",
+                (clave_hash, id_usuario),
+            )
 
     def delete(self, id_usuario: str) -> bool:
         with conexion() as conn:
