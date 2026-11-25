@@ -3,6 +3,7 @@ from __future__ import annotations
 from psycopg import Connection
 
 from backend.db import conexion
+from backend.repositories.secuencias import siguiente_id
 from backend.schemas.iniciativas import Iniciativa
 
 # `participantes` se cuenta desde la tabla puente, nunca se guarda como número.
@@ -17,6 +18,9 @@ _SELECT = """
 
 class IniciativaRepository:
     """Iniciativas vecinales y sus participantes, guardados en PostgreSQL."""
+
+    def siguiente_id(self, conn: Connection | None = None) -> str:
+        return siguiente_id("i", "seq_iniciativas", conn)
 
     def list(self) -> list[Iniciativa]:
         with conexion() as conn:

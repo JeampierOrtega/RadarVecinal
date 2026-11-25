@@ -5,6 +5,7 @@ description = "API de Radar Vecinal: reportes ciudadanos (Vecino) y acciones de 
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "argon2-cffi>=25.1.0",
     "fastapi>=0.115.0",
     "psycopg[binary,pool]>=3.3.9",
     "python-dotenv>=1.2.4",

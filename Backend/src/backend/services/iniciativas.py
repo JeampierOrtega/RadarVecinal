@@ -1,5 +1,3 @@
-from uuid import uuid4
-
 from backend.repositories.iniciativas import IniciativaRepository, iniciativa_repository
 from backend.schemas.iniciativas import (
     Iniciativa,
@@ -62,7 +60,7 @@ class IniciativaService:
         )
         iniciativa = Iniciativa(
             **datos.model_dump(),
-            id=f"i_{uuid4().hex[:8]}",
+            id=self._repository.siguiente_id(),
             id_barrio=usuario.id_barrio,
             id_creador=usuario.id,
             participantes=0,

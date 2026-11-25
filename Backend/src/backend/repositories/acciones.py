@@ -3,6 +3,7 @@ from __future__ import annotations
 from psycopg import Connection
 
 from backend.db import conexion
+from backend.repositories.secuencias import siguiente_id
 from backend.schemas.acciones import Accion
 
 # Columnas en el mismo orden y con los mismos nombres que el modelo Pydantic.
@@ -14,6 +15,9 @@ _COLUMNAS = """
 
 class AccionRepository:
     """Acciones municipales y noticias leídas, guardadas en PostgreSQL."""
+
+    def siguiente_id(self, conn: Connection | None = None) -> str:
+        return siguiente_id("a", "seq_acciones", conn)
 
     def list(self) -> list[Accion]:
         with conexion() as conn:

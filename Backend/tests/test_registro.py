@@ -24,9 +24,10 @@ def _servicio_con_mocks():
     repo_barrios.validar_codigo.side_effect = (
         lambda id_b, cod: id_b == "b1" and cod.strip().upper() == "TORRE-2026"
     )
-    # Por defecto, no existen duplicados
+    # Por defecto, no existen duplicados y el ID sale de la secuencia simulada
     repo_usuarios.get_by_dni.return_value = None
     repo_usuarios.get_by_correo.return_value = None
+    repo_usuarios.siguiente_id.return_value = "v41"
     repo_usuarios.add.side_effect = lambda u: u
 
     servicio = UsuarioService(repository=repo_usuarios, barrios=repo_barrios)

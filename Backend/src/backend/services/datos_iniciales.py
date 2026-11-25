@@ -11,11 +11,11 @@ from datetime import UTC, datetime, timedelta
 
 from psycopg import Connection
 
+from backend.core.seguridad import hashear
 from backend.db import pool
 from backend.repositories.barrios import barrio_repository
 from backend.schemas.barrios import Barrio
 from backend.services.temperatura import GRAVEDAD, barrio_del_punto, punto_en_poligono
-from backend.services.usuarios import hashear
 
 logger = logging.getLogger("radar_vecinal")
 
@@ -302,6 +302,43 @@ SQL_ACCION = """
     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, '{}', NULL, %s, %s)
     ON CONFLICT (id) DO NOTHING
 """
+
+
+# Cada sentencia deja la secuencia en el máximo ID numérico existente (mínimo 1) para
+# que `nextval` no choque con los IDs fijos de la demo. `is_called = true` hace que el
+# siguiente valor sea max + 1.
+_SQL_AJUSTES_SECUENCIAS = (
+    """
+    SELECT setval('seq_usuarios_vecinos', greatest(coalesce(
+        (SELECT max(substring(id from 2)::int) FROM usuarios WHERE id ~ '^v[0-9]+$'), 0), 1), true)
+    """,
+    """
+    SELECT setval('seq_usuarios_municipalidad', greatest(coalesce(
+        (SELECT max(substring(id from 2)::int) FROM usuarios WHERE id ~ '^m[0-9]+$'), 0), 1), true)
+    """,
+    """
+    SELECT setval('seq_reportes', greatest(coalesce(
+        (SELECT max(substring(id from 2)::int) FROM reportes WHERE id ~ '^r[0-9]+$'), 0), 1), true)
+    """,
+    """
+    SELECT setval('seq_acciones', greatest(coalesce(
+        (SELECT max(substring(id from 2)::int) FROM acciones WHERE id ~ '^a[0-9]+$'), 0), 1), true)
+    """,
+    """
+    SELECT setval('seq_iniciativas', greatest(coalesce(
+        (SELECT max(substring(id from 2)::int) FROM iniciativas WHERE id ~ '^i[0-9]+$'), 0), 1), true)
+    """,
+    """
+    SELECT setval('seq_alertas', greatest(coalesce(
+        (SELECT max(substring(id from 3)::int) FROM alertas WHERE id ~ '^al[0-9]+$'), 0), 1), true)
+    """,
+)
+
+
+def _ajustar_secuencias(conn: Connection) -> None:
+    """Sincroniza las secuencias con los IDs fijos que acaba de insertar la demo."""
+    for sentencia in _SQL_AJUSTES_SECUENCIAS:
+        conn.execute(sentencia)
 
 
 def _tablas_vacias(conn: Connection) -> dict[str, bool]:
@@ -595,3 +632,7 @@ def cargar_datos_iniciales() -> None:
         if vacias["acciones"]:
             _cargar_acciones(conn, ahora)
             logger.info("Datos demo: acciones municipales insertadas")
+
+        # La demo usa IDs fijos (v1..v40, m1, r1.., a1.., i1..): las secuencias deben
+        # continuar después del máximo real para que los IDs nuevos no choquen.
+        _ajustar_secuencias(conn)

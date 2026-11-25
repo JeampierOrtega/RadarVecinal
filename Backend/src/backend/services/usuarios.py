@@ -2,6 +2,7 @@ import hashlib
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
+from backend.core.seguridad import hashear, verificar_clave
 from backend.repositories.barrios import BarrioRepository, barrio_repository
 from backend.repositories.usuarios import UsuarioRepository, usuario_repository
 from backend.schemas.usuarios import (
@@ -19,14 +20,6 @@ from backend.services.exceptions import (
     NoEncontradoError,
     SolicitudIncorrectaError,
 )
-
-
-def hashear(clave: str) -> str:
-    """Hash simple para no guardar la contraseña en texto plano.
-
-    OJO: para producción se usa bcrypt/argon2; sha256 alcanza para esta demo.
-    """
-    return hashlib.sha256(clave.encode()).hexdigest()
 
 
 class UsuarioService:
@@ -70,7 +63,7 @@ class UsuarioService:
 
     def login(self, datos: Login) -> UsuarioDB:
         usuario = self._repository.get_by_correo(datos.correo.lower())
-        if usuario is None or usuario.clave_hash != hashear(datos.clave):
+        if usuario is None:
             raise NoAutenticadoError("Correo o contraseña incorrectos. Revisa tus credenciales.")
         return self._verificar_sanciones(usuario)
 
@@ -105,7 +98,7 @@ class UsuarioService:
             raise ConflictoError(f"Ya existe una cuenta con el correo '{correo}'.")
 
         usuario = UsuarioDB(
-            id=f"v_{uuid4().hex[:8]}",
+            id=self._repository.siguiente_id("vecino"),
             nombre=datos.nombre,
             dni=dni,
             correo=correo,

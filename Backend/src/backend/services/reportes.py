@@ -1,5 +1,4 @@
 from datetime import UTC, datetime, timedelta
-from uuid import uuid4
 
 from backend.repositories.acciones import accion_repository
 from backend.repositories.barrios import BarrioRepository, barrio_repository
@@ -123,7 +122,7 @@ class ReporteService:
         id_barrio = self._barrio_id(datos.lat, datos.lng)
         reporte = Reporte(
             **datos.model_dump(),
-            id=f"r_{uuid4().hex[:8]}",
+            id=self._repository.siguiente_id(),
             id_usuario=usuario.id,  # el autor sale de la sesión, nunca del cliente
             gravedad=GRAVEDAD[datos.tipo],
             id_barrio=id_barrio,

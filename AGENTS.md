@@ -4,12 +4,13 @@
 - Everything lives under `Radar Vecinal/` (space in the path; quote it). Two independent apps, no root manifest or task runner:
   - `Backend/` — FastAPI, Python >= 3.13, uv, PostgreSQL (psycopg 3, SQL a mano, sin ORM).
   - `Frontend/` — Angular 22 with SSR, Bootstrap 5, SweetAlert2, Leaflet.
-- This workspace is not a Git repo and has no CI. The only frontend test is `Frontend/src/app/app.spec.ts`; the backend has no tests.
+- This workspace has no CI. The only frontend test is `Frontend/src/app/app.spec.ts`; the backend tests live in `Backend/tests/` (pytest, sin base real).
 
 ## Commands
 ```powershell
 cd "Radar Vecinal\Backend"
 uv sync
+uv run pytest                                   # tests de backend, sin tocar PostgreSQL
 uv run backend                                  # 127.0.0.1:8000 with reload
 
 cd "Radar Vecinal\Frontend"
@@ -32,6 +33,9 @@ npx ng test --include src/app/app.spec.ts       # one test file
 - Data persists in PostgreSQL. `services/datos_iniciales.py` is idempotent: it only fills tables that are empty and uses `INSERT ... ON CONFLICT DO NOTHING`, so restarting the backend does not reset changes. Demo password is `123456`; accounts are in the root README.
 - `confirmaciones` and `denuncias` are not columns of `reportes`: they are counted from `votos_reporte` and `denuncias_reporte`. `iniciativas.participantes` is `COUNT(*)` of `iniciativa_participantes`. Barrio polygons are JSONB converted to `list[tuple[float, float]]`; `acciones.fotos` is `TEXT[]`.
 - Auth is not JWT: login returns a `Usuario`, then the frontend sends `X-Usuario-Id`. `apis/dependencias.py` enforces session, verification, and role (`VecinoDep`, `MunicipalidadDep`, etc.). Test with curl using `-H "X-Usuario-Id: v1"`.
+- Passwords are Argon2id. `core/seguridad.py` is the only module that hashes or verifies (`hashear`, `verificar_clave`). Registration always stores a `$argon2id$` hash. Login verifies Argon2, rehashes when `check_needs_rehash` asks for it, and upgrades legacy 64-char SHA-256 hashes in place on the first successful login. Corrupt/empty/foreign hashes are invalid credentials, never a 500. Never log passwords or hashes. `services/datos_iniciales.py` computes the demo hash once and reuses it for all demo accounts.
+- IDs of new rows use PostgreSQL sequences: `<prefijo><número>` with `v` (vecinos), `m` (municipalidad), `r` (reportes), `a` (acciones), `i` (iniciativas), `al` (alertas). `repositories/secuencias.py` runs `nextval`; repositories expose `siguiente_id` and services never use `uuid4`, `MAX(id)+1` or random IDs. Existing IDs of reportes/acciones/iniciativas/alertas are not normalized; only user IDs are (migration script). Gaps are normal. `services/datos_iniciales.py` runs `setval` for the six sequences after the demo seed.
+- Existing databases must run `db/migrar_argon2_y_secuencias.sql` in DBeaver **before** starting the new backend: it adds `ON UPDATE CASCADE` to the 8 FKs into `usuarios(id)`, creates the six sequences, renames out-of-format user IDs to `v<n>`/`m<n>`, aligns the sequences and upgrades the SHA-256 of `123456`. The backend and `uv run backend` require those sequences to exist.
 - Declare static routes before `/{id}` routes (see the `/reportes/mios` comment), otherwise FastAPI treats the name as an ID.
 - JSON and Pydantic fields use `snake_case`.
 

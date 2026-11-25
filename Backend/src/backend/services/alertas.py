@@ -1,5 +1,4 @@
 from datetime import UTC, datetime, timedelta
-from uuid import uuid4
 
 from backend.repositories.alertas import AlertaRepository, alerta_repository
 from backend.schemas.paneles import Alerta
@@ -28,7 +27,7 @@ class AlertaService:
         if previa is not None and previa.expira > ahora:
             return previa  # una alerta activa nunca se extiende: dura siempre 30 minutos
         alerta = Alerta(
-            id=f"alerta_{uuid4().hex[:8]}",
+            id=self._repository.siguiente_id(),
             id_barrio=usuario.id_barrio,
             inicio=ahora,
             expira=ahora + DURACION_ALERTA,

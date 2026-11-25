@@ -14,6 +14,16 @@ DROP TABLE IF EXISTS usuarios                 CASCADE;
 DROP TABLE IF EXISTS codigos_barrio           CASCADE;
 DROP TABLE IF EXISTS barrios                  CASCADE;
 
+-- ---------- SECUENCIAS DE IDs ----------
+-- Los IDs nuevos usan el formato <prefijo><número>. Las secuencias son independientes
+-- de las tablas para conservar el id como llave primaria subrogada.
+CREATE SEQUENCE IF NOT EXISTS seq_usuarios_vecinos;
+CREATE SEQUENCE IF NOT EXISTS seq_usuarios_municipalidad;
+CREATE SEQUENCE IF NOT EXISTS seq_reportes;
+CREATE SEQUENCE IF NOT EXISTS seq_acciones;
+CREATE SEQUENCE IF NOT EXISTS seq_iniciativas;
+CREATE SEQUENCE IF NOT EXISTS seq_alertas;
+
 -- ---------- BARRIOS ----------
 CREATE TABLE barrios (
     id        TEXT PRIMARY KEY,
@@ -59,7 +69,7 @@ CREATE INDEX idx_usuarios_dni    ON usuarios(dni);
 -- ---------- REPORTES ----------
 CREATE TABLE reportes (
     id           TEXT PRIMARY KEY,
-    id_usuario   TEXT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    id_usuario   TEXT NOT NULL REFERENCES usuarios(id) ON UPDATE CASCADE ON DELETE CASCADE,
     id_barrio    TEXT NOT NULL REFERENCES barrios(id)  ON UPDATE CASCADE,
     lat          DOUBLE PRECISION NOT NULL CHECK (lat BETWEEN -90  AND 90),
     lng          DOUBLE PRECISION NOT NULL CHECK (lng BETWEEN -180 AND 180),
@@ -80,7 +90,7 @@ CREATE INDEX idx_reportes_fecha   ON reportes(fecha DESC);
 -- Votos de vecinos sobre un reporte (1 voto por vecino y reporte)
 CREATE TABLE votos_reporte (
     id_reporte  TEXT NOT NULL REFERENCES reportes(id) ON DELETE CASCADE,
-    id_usuario  TEXT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    id_usuario  TEXT NOT NULL REFERENCES usuarios(id) ON UPDATE CASCADE ON DELETE CASCADE,
     voto        TEXT NOT NULL CHECK (voto IN ('confirmo', 'incorrecto')),
     fecha       TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (id_reporte, id_usuario)
@@ -89,7 +99,7 @@ CREATE TABLE votos_reporte (
 -- Denuncias para revisión (1 por vecino y reporte)
 CREATE TABLE denuncias_reporte (
     id_reporte  TEXT NOT NULL REFERENCES reportes(id) ON DELETE CASCADE,
-    id_usuario  TEXT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    id_usuario  TEXT NOT NULL REFERENCES usuarios(id) ON UPDATE CASCADE ON DELETE CASCADE,
     fecha       TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (id_reporte, id_usuario)
 );
@@ -98,7 +108,7 @@ CREATE TABLE denuncias_reporte (
 CREATE TABLE acciones (
     id                        TEXT PRIMARY KEY,
     id_barrio                 TEXT NOT NULL REFERENCES barrios(id)  ON UPDATE CASCADE,
-    id_autoridad              TEXT NOT NULL REFERENCES usuarios(id) ON DELETE RESTRICT,
+    id_autoridad              TEXT NOT NULL REFERENCES usuarios(id) ON UPDATE CASCADE ON DELETE RESTRICT,
     institucion               TEXT NOT NULL,
     tipo                      TEXT NOT NULL CHECK (tipo IN (
                                  'Patrullaje de serenazgo', 'Operativo con la policía',
@@ -119,7 +129,7 @@ CREATE INDEX idx_acciones_estado  ON acciones(estado);
 
 -- Noticias (acciones) ya leídas por cada vecino
 CREATE TABLE noticias_leidas (
-    id_usuario  TEXT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    id_usuario  TEXT NOT NULL REFERENCES usuarios(id) ON UPDATE CASCADE ON DELETE CASCADE,
     id_accion   TEXT NOT NULL REFERENCES acciones(id) ON DELETE CASCADE,
     fecha       TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (id_usuario, id_accion)
@@ -129,7 +139,7 @@ CREATE TABLE noticias_leidas (
 CREATE TABLE iniciativas (
     id                      TEXT PRIMARY KEY,
     id_barrio               TEXT NOT NULL REFERENCES barrios(id)  ON UPDATE CASCADE,
-    id_creador              TEXT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    id_creador              TEXT NOT NULL REFERENCES usuarios(id) ON UPDATE CASCADE ON DELETE CASCADE,
     titulo                  VARCHAR(100) NOT NULL CHECK (char_length(btrim(titulo)) >= 1),
     descripcion             VARCHAR(400) NOT NULL CHECK (char_length(btrim(descripcion)) >= 1),
     meta                    VARCHAR(200) NOT NULL CHECK (char_length(btrim(meta)) >= 1),
@@ -143,7 +153,7 @@ CREATE INDEX idx_iniciativas_creador ON iniciativas(id_creador);
 -- Vecinos que se "sumaron". El campo participantes de la API = COUNT(*) de esta tabla.
 CREATE TABLE iniciativa_participantes (
     id_iniciativa  TEXT NOT NULL REFERENCES iniciativas(id) ON DELETE CASCADE,
-    id_usuario     TEXT NOT NULL REFERENCES usuarios(id)    ON DELETE CASCADE,
+    id_usuario     TEXT NOT NULL REFERENCES usuarios(id) ON UPDATE CASCADE ON DELETE CASCADE,
     fecha          TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (id_iniciativa, id_usuario)
 );

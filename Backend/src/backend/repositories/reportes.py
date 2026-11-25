@@ -3,6 +3,7 @@ from __future__ import annotations
 from psycopg import Connection
 
 from backend.db import conexion
+from backend.repositories.secuencias import siguiente_id
 from backend.schemas.reportes import Reporte
 
 # `confirmaciones` y `denuncias` no son columnas: se cuentan desde sus tablas.
@@ -31,6 +32,9 @@ def _a_reporte(fila: dict) -> Reporte:
 
 class ReporteRepository:
     """Reportes, votos y denuncias guardados en PostgreSQL."""
+
+    def siguiente_id(self, conn: Connection | None = None) -> str:
+        return siguiente_id("r", "seq_reportes", conn)
 
     # --- reportes ---
     def list(self) -> list[Reporte]:

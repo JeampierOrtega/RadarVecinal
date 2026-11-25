@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 import pytest
 
+from backend.core.seguridad import hashear
 from backend.schemas.barrios import Barrio
 from backend.schemas.paneles import Alerta
 from backend.schemas.reportes import Reporte, ReporteCreate
@@ -11,7 +12,7 @@ from backend.schemas.usuarios import Login, ModerarUsuarioRequest, UsuarioDB
 from backend.services.alertas import AlertaService
 from backend.services.exceptions import AccesoDenegadoError, LimiteExcedidoError
 from backend.services.reportes import ReporteService
-from backend.services.usuarios import UsuarioService, hashear
+from backend.services.usuarios import UsuarioService
 
 
 def _crear_usuario(
@@ -140,6 +141,7 @@ def _servicio_reportes(reportes_existentes=None):
     repo_barrios.get.return_value = barrio
 
     repo_reportes.list.return_value = list(reportes_existentes or [])
+    repo_reportes.siguiente_id.return_value = "r999"
     repo_reportes.add.side_effect = lambda r: r
 
     servicio = ReporteService(repository=repo_reportes, barrios=repo_barrios)

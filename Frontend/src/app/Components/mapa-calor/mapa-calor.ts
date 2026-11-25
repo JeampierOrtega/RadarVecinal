@@ -15,7 +15,7 @@ import { Accion } from '../../Interfaces/accion.interface';
 import { CENTRO_HUANCAYO, COLOR_NIVEL, ETIQUETA_TIPO } from '../../Interfaces/constantes';
 import { Alerta } from '../../Interfaces/panel.interface';
 import { EstadoReporte, ReportePublico } from '../../Interfaces/reporte.interface';
-import { ZonaResumen } from '../../Interfaces/zona.interface';
+import { NivelTemperatura, ZonaResumen } from '../../Interfaces/zona.interface';
 
 export interface Punto {
   lat: number;
@@ -32,16 +32,11 @@ function pesoReporte(r: ReportePublico): number {
   return r.gravedad * factor * Math.pow(0.5, dias / 15);
 }
 
-const ETIQUETA_ESTADO: Record<EstadoReporte, string> = {
-  activo: 'Activo',
-  confirmado: 'Confirmado',
-  falso: 'Falso',
-  archivado: 'Archivado',
-};
-
-/** Fecha relativa corta ("hace 3 min") para el tooltip del punto. */
+/** Fecha relativa corta ("hace 3 min") para el tooltip y el popup. */
 function fechaRelativa(fecha: string): string {
-  const minutos = Math.max(0, Math.round((Date.now() - Date.parse(fecha)) / 60_000));
+  const instante = Date.parse(fecha);
+  if (Number.isNaN(instante)) return 'sin fecha';
+  const minutos = Math.max(0, Math.round((Date.now() - instante) / 60_000));
   if (minutos < 1) return 'ahora';
   if (minutos < 60) return `hace ${minutos} min`;
   const horas = Math.round(minutos / 60);
@@ -49,23 +44,142 @@ function fechaRelativa(fecha: string): string {
   return `hace ${Math.round(horas / 24)} d`;
 }
 
+/** Fecha absoluta legible, sin depender de los pipes de Angular. */
+function fechaAbsoluta(fecha: string): string {
+  const valor = new Date(fecha);
+  if (Number.isNaN(valor.getTime())) return '—';
+  return valor.toLocaleString('es-PE', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function plural(cantidad: number, singular: string, varios: string): string {
+  return `${cantidad} ${cantidad === 1 ? singular : varios}`;
+}
+
+/** Nivel de temperatura equivalente a la gravedad (chips y barras del popup). */
+function nivelDeGravedad(gravedad: number): NivelTemperatura {
+  if (gravedad >= 5) return 'rojo';
+  if (gravedad >= 3) return 'naranja';
+  if (gravedad >= 2) return 'amarillo';
+  return 'verde';
+}
+
+const ESTADO_POPUP: Record<EstadoReporte, { texto: string; clase: string }> = {
+  activo: { texto: 'Activo', clase: 'estado-activo' },
+  confirmado: { texto: 'Confirmado', clase: 'estado-confirmado' },
+  falso: { texto: 'Falso', clase: 'estado-falso' },
+  archivado: { texto: 'Archivado', clase: 'estado-archivado' },
+};
+
+/** Crea un nodo con clase y texto: lo que escribe el vecino pasa siempre por textContent. */
+function nodo<K extends keyof HTMLElementTagNameMap>(
+  etiqueta: K,
+  clase?: string,
+  texto?: string,
+): HTMLElementTagNameMap[K] {
+  const elemento = document.createElement(etiqueta);
+  if (clase) elemento.className = clase;
+  if (texto !== undefined) elemento.textContent = texto;
+  return elemento;
+}
+
+function filaPopup(icono: string, etiqueta: string, valor: string, claseValor = ''): HTMLElement {
+  const fila = nodo('div', 'pr-fila');
+  const marca = nodo('i', `bi ${icono}`);
+  marca.setAttribute('aria-hidden', 'true');
+  fila.append(
+    marca,
+    nodo('span', 'pr-etiqueta', etiqueta),
+    nodo('span', `pr-valor ${claseValor}`.trim(), valor),
+  );
+  return fila;
+}
+
+/** Tooltip de una línea: punto de gravedad + tipo + "hace X". */
+function contenidoTooltip(r: ReportePublico): HTMLElement {
+  const linea = nodo('span', 'tt-linea');
+  linea.append(
+    nodo('span', `tt-punto heat-${nivelDeGravedad(r.gravedad)}`),
+    nodo('span', 'tt-tipo', ETIQUETA_TIPO[r.tipo]),
+    nodo('span', 'tt-hace', fechaRelativa(r.fecha)),
+  );
+  return linea;
+}
+
 /**
- * Contenido del tooltip construido con DOM y textContent: la descripción la escribe
- * un vecino, así que nunca se inserta como HTML (evita XSS).
+ * Tarjeta del popup al hacer clic en un punto. Se construye con DOM y textContent:
+ * la descripción la escribe un vecino y nunca se inserta como HTML.
  */
-function contenidoReporte(r: ReportePublico): HTMLElement {
-  const caja = document.createElement('div');
-  const titulo = document.createElement('strong');
-  titulo.className = 'tooltip-reporte-titulo';
-  titulo.textContent = ETIQUETA_TIPO[r.tipo];
-  const descripcion = document.createElement('span');
-  descripcion.className = 'tooltip-reporte-desc';
-  descripcion.textContent = r.descripcion;
-  const meta = document.createElement('span');
-  meta.className = 'tooltip-reporte-meta';
-  meta.textContent = `Gravedad ${r.gravedad}/5 · ${fechaRelativa(r.fecha)} · ${ETIQUETA_ESTADO[r.estado]}`;
-  caja.append(titulo, descripcion, meta);
-  return caja;
+function contenidoPopup(
+  r: ReportePublico,
+  barrio: string | null,
+  verDetalle: () => void,
+): HTMLElement {
+  const nivel = nivelDeGravedad(r.gravedad);
+  const estado = ESTADO_POPUP[r.estado];
+  const tarjeta = nodo('div', 'popup-reporte-card');
+
+  const cabecera = nodo('div', 'pr-cabecera');
+  const chip = nodo('span', `pr-chip nivel-${nivel}`);
+  chip.append(nodo('span', 'pr-punto'), nodo('span', 'pr-tipo', ETIQUETA_TIPO[r.tipo]));
+  cabecera.append(chip);
+
+  const descripcion = nodo('p', 'pr-desc', r.descripcion);
+
+  const barra = nodo('div', `pr-barra nivel-${nivel}`);
+  const relleno = nodo('span');
+  relleno.style.width = `${Math.min(100, Math.max(0, (r.gravedad / 5) * 100))}%`;
+  barra.append(relleno);
+
+  const votos = nodo('div', 'pr-votos');
+  const voto = (icono: string, texto: string): HTMLElement => {
+    const pildora = nodo('span', 'pr-voto');
+    const marca = nodo('i', `bi ${icono}`);
+    marca.setAttribute('aria-hidden', 'true');
+    pildora.append(marca, nodo('span', undefined, texto));
+    return pildora;
+  };
+  votos.append(
+    voto('bi-hand-thumbs-up', plural(r.confirmaciones, 'confirmación', 'confirmaciones')),
+    voto('bi-hand-thumbs-down', plural(r.incorrectos, 'incorrecto', 'incorrectos')),
+  );
+
+  const ver = nodo('button', 'btn btn-sm btn-acento pr-ver');
+  ver.type = 'button';
+  const iconoVer = nodo('i', 'bi bi-arrow-up-right-circle');
+  iconoVer.setAttribute('aria-hidden', 'true');
+  ver.append(iconoVer, nodo('span', undefined, 'Ver detalle'));
+  ver.addEventListener('click', (evento) => {
+    evento.stopPropagation();
+    verDetalle();
+  });
+
+  const filaEstado = nodo('div', 'pr-fila');
+  const marcaEstado = nodo('i', 'bi bi-info-circle');
+  marcaEstado.setAttribute('aria-hidden', 'true');
+  filaEstado.append(
+    marcaEstado,
+    nodo('span', 'pr-etiqueta', 'Estado'),
+    nodo('span', `pr-estado ${estado.clase}`, estado.texto),
+  );
+
+  const filas = nodo('div', 'pr-filas');
+  filas.append(
+    filaPopup('bi-speedometer2', 'Gravedad', `${r.gravedad}/5`, `nivel-${nivel}`),
+    barra,
+    filaPopup('bi-clock-history', 'Reportado', fechaRelativa(r.fecha)),
+    filaPopup('bi-calendar3', 'Fecha', fechaAbsoluta(r.fecha)),
+    filaEstado,
+    filaPopup('bi-geo-alt', 'Barrio', barrio ?? r.id_barrio),
+  );
+
+  tarjeta.append(cabecera, descripcion, filas, votos, ver);
+  return tarjeta;
 }
 
 function mmss(segundos: number): string {
@@ -102,6 +216,8 @@ export class MapaCalor implements OnDestroy {
   readonly reporteClick = output<string>();
   readonly accionClick = output<string>();
   readonly puntoElegido = output<Punto>();
+  /** Clic en una zona vacía del mapa (sin barrio ni punto): cierra el panel abierto. */
+  readonly fondoClick = output<void>();
 
   private readonly contenedor = viewChild.required<ElementRef<HTMLDivElement>>('contenedor');
   private readonly listo = signal(false);
@@ -120,6 +236,8 @@ export class MapaCalor implements OnDestroy {
   private ubicacion?: Leaflet.LayerGroup;
   private limitesCiudad?: Leaflet.LatLngBounds;
   private temporizador?: ReturnType<typeof setInterval>;
+  private popupAbierto?: Leaflet.Popup;
+  private temporizadorRedimension?: ReturnType<typeof setTimeout>;
   private encuadreHecho = false;
   private readonly ahora = signal(Date.now());
   private base: BaseMapa = 'mapa';
@@ -196,9 +314,21 @@ export class MapaCalor implements OnDestroy {
       this.capasAlerta = this.L.layerGroup().addTo(this.mapa);
       this.ubicacion = this.L.layerGroup().addTo(this.mapa);
 
+      // Los tooltips de reportes van sobre los paneles flotantes; las etiquetas de
+      // barrio se quedan debajo (si no, los nombres se pintarían encima de las tarjetas).
+      this.mapa.createPane('tooltip-reportes').style.zIndex = '850';
+
       this.mapa.on('click', (e: Leaflet.LeafletMouseEvent) => {
-        if (this.elegir()) this.puntoElegido.emit({ lat: e.latlng.lat, lng: e.latlng.lng });
+        if (this.elegir()) {
+          this.puntoElegido.emit({ lat: e.latlng.lat, lng: e.latlng.lng });
+          return;
+        }
+        // Clic en zona vacía: la pantalla cierra el panel del barrio.
+        this.fondoClick.emit();
       });
+
+      // Los márgenes del autoPan dependen de los paneles: se recalculan al redimensionar.
+      window.addEventListener('resize', this.alRedimensionar, { passive: true });
 
       // Cuenta regresiva de las alertas: se actualiza cada segundo.
       this.temporizador = setInterval(() => this.ahora.set(Date.now()), 1000);
@@ -218,7 +348,150 @@ export class MapaCalor implements OnDestroy {
 
   ngOnDestroy(): void {
     clearInterval(this.temporizador);
+    clearTimeout(this.temporizadorRedimension);
+    if (typeof window !== 'undefined') window.removeEventListener('resize', this.alRedimensionar);
     this.mapa?.remove();
+  }
+
+  /** Respeta la preferencia del sistema de reducir animaciones. */
+  private prefiereMenosMovimiento(): boolean {
+    return (
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
+  }
+
+  /** Al cambiar el tamaño de la ventana se recalculan los márgenes del popup abierto. */
+  private readonly alRedimensionar = (): void => {
+    clearTimeout(this.temporizadorRedimension);
+    this.temporizadorRedimension = setTimeout(() => {
+      const popup = this.popupAbierto;
+      if (!this.mapa || !popup || !popup.isOpen()) return;
+      const margenes = this.margenesAutoPan();
+      popup.options.autoPanPaddingTopLeft = margenes.topLeft;
+      popup.options.autoPanPaddingBottomRight = margenes.bottomRight;
+      const destino = popup.getLatLng();
+      if (destino) {
+        this.mapa.panInside(destino, {
+          paddingTopLeft: margenes.topLeft,
+          paddingBottomRight: margenes.bottomRight,
+          animate: !this.prefiereMenosMovimiento(),
+        });
+      }
+    }, 120);
+  };
+
+  /** Rectángulos actuales de los paneles superpuestos (medidos en vivo). */
+  private panelesSuperpuestos(): { tipo: string; caja: DOMRect }[] {
+    const host = this.contenedor().nativeElement.closest('.pantalla');
+    if (!host) return [];
+    return Array.from(host.querySelectorAll<HTMLElement>('[data-panel]')).map((elemento) => ({
+      tipo: elemento.dataset['panel'] ?? '',
+      caja: elemento.getBoundingClientRect(),
+    }));
+  }
+
+  /** Márgenes del autoPan para que el popup no quede debajo de ningún panel. */
+  private margenesAutoPan(): {
+    topLeft: [number, number];
+    bottomRight: [number, number];
+  } {
+    const contenedor = this.contenedor().nativeElement;
+    const mapa = contenedor.getBoundingClientRect();
+    const ancho = mapa.width || 1;
+    const alto = mapa.height || 1;
+    let arriba = 0;
+    let izquierda = 0;
+    let derecha = 0;
+    let abajo = 0;
+
+    for (const { tipo, caja } of this.panelesSuperpuestos()) {
+      if (!caja.width || !caja.height) continue;
+      switch (tipo) {
+        case 'filtros':
+        case 'aviso':
+          arriba = Math.max(arriba, caja.bottom - mapa.top + 10);
+          break;
+        case 'derecha':
+          derecha = Math.max(derecha, mapa.right - caja.left + 10);
+          break;
+        case 'controles':
+          // En escritorio van al borde izquierdo; en móvil, al derecho.
+          if (caja.left > mapa.left + ancho / 2) {
+            derecha = Math.max(derecha, mapa.right - caja.left + 10);
+          } else {
+            izquierda = Math.max(izquierda, caja.right - mapa.left + 10);
+          }
+          break;
+        case 'leyenda':
+        case 'acciones':
+          abajo = Math.max(abajo, mapa.bottom - caja.top + 10);
+          break;
+        case 'hoja':
+          // Hoja inferior: solo cuenta cuando ocupa casi todo el ancho (móvil).
+          if (caja.width >= ancho * 0.55) {
+            abajo = Math.max(abajo, mapa.bottom - caja.top + 10);
+          }
+          break;
+      }
+    }
+
+    // Nunca dejar el área visible en menos de ~24 % del mapa.
+    const limiteY = alto * 0.38;
+    const limiteX = ancho * 0.38;
+    return {
+      topLeft: [Math.min(izquierda, limiteX), Math.min(arriba, limiteY)],
+      bottomRight: [Math.min(derecha, limiteX), Math.min(abajo, limiteY)],
+    };
+  }
+
+  /** Arriba por defecto; abajo si el punto está junto al borde superior o a un panel. */
+  private direccionTooltip(lat: number, lng: number): 'top' | 'bottom' {
+    const mapa = this.mapa;
+    if (!mapa) return 'top';
+    const contenedor = this.contenedor().nativeElement;
+    const punto = mapa.latLngToContainerPoint([lat, lng]);
+    const cajaMapa = contenedor.getBoundingClientRect();
+    const alto = cajaMapa.height || 1;
+    let limite = 56;
+
+    for (const { tipo, caja } of this.panelesSuperpuestos()) {
+      if (!caja.width || !caja.height) continue;
+      if (tipo !== 'filtros' && tipo !== 'aviso' && tipo !== 'derecha') continue;
+      const desdeArriba = caja.bottom - cajaMapa.top;
+      if (desdeArriba > alto * 0.55) continue;
+      const dentroX =
+        punto.x >= caja.left - cajaMapa.left - 16 && punto.x <= caja.right - cajaMapa.left + 16;
+      if (dentroX) limite = Math.max(limite, desdeArriba + 14);
+    }
+
+    return punto.y <= limite ? 'bottom' : 'top';
+  }
+
+  /** Abre la tarjeta de un reporte con los márgenes reales de los paneles. */
+  private abrirPopupReporte(reporte: ReportePublico, destino: Leaflet.LatLng): void {
+    if (!this.mapa) return;
+    const margenes = this.margenesAutoPan();
+    const barrio = this.zonas().find((z) => z.id === reporte.id_barrio)?.nombre ?? null;
+    this.popupAbierto = this.L.popup({
+      className: 'popup-reporte',
+      minWidth: 280,
+      maxWidth: 320,
+      autoPan: true,
+      keepInView: true,
+      autoPanPaddingTopLeft: margenes.topLeft,
+      autoPanPaddingBottomRight: margenes.bottomRight,
+      closeButton: true,
+      offset: [0, -6],
+    })
+      .setLatLng(destino)
+      .setContent(
+        contenidoPopup(reporte, barrio, () => {
+          this.mapa?.closePopup();
+          this.reporteClick.emit(reporte.id);
+        }),
+      )
+      .openOn(this.mapa);
   }
 
   // --- Controles que usa la pantalla del mapa (estilo Google Maps) ---
@@ -255,7 +528,10 @@ export class MapaCalor implements OnDestroy {
       (zonas.length ? this.L.latLngBounds(zonas.flatMap((z) => z.poligono)) : null);
     if (!limites) return;
     this.limitesCiudad = limites;
-    this.mapa.flyToBounds(limites, { padding: [28, 28], duration: 0.6 });
+    this.mapa.flyToBounds(limites, {
+      padding: [28, 28],
+      duration: this.prefiereMenosMovimiento() ? 0 : 0.6,
+    });
   }
 
   /** Centra el mapa en un barrio concreto (buscador del mapa). */
@@ -264,7 +540,7 @@ export class MapaCalor implements OnDestroy {
     this.mapa.flyToBounds(this.L.latLngBounds(zona.poligono), {
       padding: [40, 40],
       maxZoom: 16,
-      duration: 0.6,
+      duration: this.prefiereMenosMovimiento() ? 0 : 0.6,
     });
   }
 
@@ -299,7 +575,9 @@ export class MapaCalor implements OnDestroy {
             fillColor: '#2563eb',
             fillOpacity: 0.14,
           }).addTo(this.ubicacion!);
-          this.mapa!.flyTo([punto.lat, punto.lng], 16, { duration: 0.7 });
+          this.mapa!.flyTo([punto.lat, punto.lng], 16, {
+            duration: this.prefiereMenosMovimiento() ? 0 : 0.7,
+          });
           resolver(punto);
         },
         (error) => {
@@ -387,7 +665,10 @@ export class MapaCalor implements OnDestroy {
             className: 'etiqueta-barrio',
             opacity: 0.95,
           })
-          .on('click', () => this.zonaClick.emit(zona.id));
+          .on('click', (e: Leaflet.LeafletMouseEvent) => {
+            L.DomEvent.stopPropagation(e.originalEvent);
+            this.zonaClick.emit(zona.id);
+          });
       }
     }
 
@@ -436,7 +717,10 @@ export class MapaCalor implements OnDestroy {
           }),
         })
           .bindTooltip(`${accion.titulo} · ${accion.estado}`)
-          .on('click', () => this.accionClick.emit(accion.id))
+          .on('click', (e: Leaflet.LeafletMouseEvent) => {
+            L.DomEvent.stopPropagation(e.originalEvent);
+            this.accionClick.emit(accion.id);
+          })
           .addTo(capas);
       }
 
@@ -450,14 +734,17 @@ export class MapaCalor implements OnDestroy {
           fillOpacity: 0.92,
           weight: 1.3,
         })
-          .bindTooltip(contenidoReporte(reporte), {
-            direction: 'top',
+          .bindTooltip(contenidoTooltip(reporte), {
+            direction: this.direccionTooltip(reporte.lat, reporte.lng),
             offset: [0, -2],
             className: 'tooltip-reporte',
+            pane: 'tooltip-reportes',
+            opacity: 1,
           })
           .on('click', (e: Leaflet.LeafletMouseEvent) => {
+            // El clic abre la tarjeta; "Ver detalle" emite reporteClick.
             L.DomEvent.stopPropagation(e.originalEvent);
-            this.reporteClick.emit(reporte.id);
+            this.abrirPopupReporte(reporte, e.latlng);
           })
           .addTo(capas);
       }
