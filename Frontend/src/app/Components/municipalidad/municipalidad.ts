@@ -27,6 +27,7 @@ type Pestana = 'criticos' | 'acciones' | 'vecinos' | 'reportes' | 'estadisticas'
   selector: 'app-municipalidad',
   imports: [DatePipe, AccionFormulario, Estadisticas, Modal, ReporteDetalle, Cargando, ErrorCarga],
   templateUrl: './municipalidad.html',
+  styleUrl: './municipalidad.css',
 })
 export class Municipalidad implements OnInit {
   private readonly paneles = inject(PanelesService);
@@ -331,7 +332,7 @@ export class Municipalidad implements OnInit {
   protected async reactivarVecino(u: Usuario): Promise<void> {
     const ok = await this.avisos.confirmar(
       `¿Reactivar cuenta de ${u.nombre}?`,
-      'Se restablecerá su estado a Verificado y sus strikes volverán a 0/3.',
+      'Se restablecerá su estado a Activo y sus strikes volverán a 0/3.',
       'Reactivar cuenta',
       false,
     );

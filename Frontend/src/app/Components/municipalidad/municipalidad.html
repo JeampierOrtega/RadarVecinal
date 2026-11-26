@@ -7,7 +7,7 @@
     </div>
   </div>
 
-  <ul class="nav nav-tabs mb-3 flex-nowrap overflow-auto">
+  <ul class="nav nav-tabs mb-3 flex-nowrap" style="overflow-x: auto; overflow-y: hidden;">
     @for (p of pestanas; track p.id) {
       <li class="nav-item">
         <button
@@ -295,46 +295,55 @@
                     </span>
                   </td>
                   <td>
-                    <span
-                      class="badge text-capitalize"
-                      [class.text-bg-success]="r.estado === 'confirmado'"
-                      [class.text-bg-primary]="r.estado === 'activo'"
-                      [class.text-bg-danger]="r.estado === 'falso'"
-                      [class.text-bg-secondary]="r.estado === 'archivado'"
-                    >
-                      {{ r.estado }}
-                    </span>
+                    @if (respuestaDe(r.id)) {
+                      <span class="badge" style="background-color: #10b981; color: #fff;">
+                        <i class="bi bi-shield-check me-1"></i>Atendido
+                      </span>
+                    } @else {
+                      <span
+                        class="badge text-capitalize"
+                        [class.text-bg-success]="r.estado === 'confirmado'"
+                        [class.text-bg-primary]="r.estado === 'activo'"
+                        [class.text-bg-danger]="r.estado === 'falso'"
+                        [class.text-bg-secondary]="r.estado === 'archivado'"
+                      >
+                        {{ r.estado }}
+                      </span>
+                    }
                   </td>
                   <td class="text-end text-nowrap">
                     <div class="btn-group">
-                      @if (r.estado !== 'falso' && r.estado !== 'archivado') {
+                      @if (respuestaDe(r.id)) {
+                        <!-- Reporte ya atendido oficialmente: solo Ver detalle -->
                         <button
-                          class="btn btn-sm btn-outline-danger"
-                          title="Declarar falso y aplicar +1 strike al autor"
-                          [disabled]="procesandoAccion() === r.id"
-                          (click)="marcarFalso(r)"
+                          class="btn btn-sm btn-outline-secondary"
+                          (click)="reporteId.set(r.id)"
                         >
-                          <i class="bi bi-x-octagon me-1"></i>Marcar falso (+1 Strike)
+                          Ver detalle
                         </button>
+                      } @else {
+                        <!-- Reporte pendiente: Marcar falso · Ver detalle · Responder -->
+                        @if (r.estado !== 'falso' && r.estado !== 'archivado') {
+                          <button
+                            class="btn btn-sm btn-outline-danger"
+                            title="Declarar falso y aplicar +1 strike al autor"
+                            [disabled]="procesandoAccion() === r.id"
+                            (click)="marcarFalso(r)"
+                          >
+                            <i class="bi bi-x-octagon me-1"></i>Marcar falso (+1 Strike)
+                          </button>
+                        }
                         <button
-                          class="btn btn-sm btn-danger"
-                          title="Purgar todos los reportes del autor y banearlo"
-                          [disabled]="procesandoAccion() === r.id"
-                          (click)="purgarSpam(r)"
+                          class="btn btn-sm btn-outline-secondary"
+                          (click)="reporteId.set(r.id)"
                         >
-                          <i class="bi bi-trash3-fill me-1"></i>Purgar spam y banear
+                          Ver detalle
                         </button>
-                      }
-                      <button
-                        class="btn btn-sm btn-outline-secondary"
-                        (click)="reporteId.set(r.id)"
-                      >
-                        Ver detalle
-                      </button>
-                      @if (!respuestaDe(r.id) && r.estado !== 'archivado' && r.estado !== 'falso') {
-                        <button class="btn btn-sm btn-acento" (click)="responderReporte(r)">
-                          <i class="bi bi-reply me-1"></i>Responder
-                        </button>
+                        @if (r.estado !== 'archivado' && r.estado !== 'falso') {
+                          <button class="btn btn-sm btn-acento" (click)="responderReporte(r)">
+                            <i class="bi bi-reply me-1"></i>Responder
+                          </button>
+                        }
                       }
                     </div>
                   </td>
@@ -370,30 +379,30 @@
 
         <div class="card shadow-sm">
           <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 tabla-moderacion-vecinos">
               <thead class="table-light">
                 <tr>
-                  <th>Vecino</th>
-                  <th>DNI y Contacto</th>
-                  <th>Barrio</th>
-                  <th>Strikes acumulados</th>
-                  <th>Estado de la cuenta</th>
-                  <th class="text-end">Acciones disciplinarias</th>
+                  <th class="col-vecino">Vecino</th>
+                  <th class="col-contacto">DNI y Contacto</th>
+                  <th class="col-barrio">Barrio</th>
+                  <th class="col-strikes">Strikes acumulados</th>
+                  <th class="col-estado">Estado de la cuenta</th>
+                  <th class="col-acciones text-end">Acciones disciplinarias</th>
                 </tr>
               </thead>
               <tbody>
                 @for (u of vecinosLista(); track u.id) {
                   <tr [class.table-danger]="u.estado === 'Baneado'" [class.table-warning]="u.estado === 'Suspendido'">
-                    <td>
+                    <td class="col-vecino">
                       <div class="d-flex align-items-center gap-2">
                         <span class="avatar-solicitud">{{ u.nombre.charAt(0) }}</span>
-                        <div>
-                          <div class="fw-semibold">{{ u.nombre }}</div>
+                        <div class="min-w-0">
+                          <div class="fw-semibold text-truncate">{{ u.nombre }}</div>
                           <div class="small text-secondary">Registro: {{ u.fecha_registro | date: 'dd/MM/yyyy' }}</div>
                         </div>
                       </div>
                     </td>
-                    <td>
+                    <td class="col-contacto">
                       <div>
                         @if (u.dni) {
                           <span class="badge text-bg-light border font-monospace">
@@ -401,10 +410,10 @@
                           </span>
                         }
                       </div>
-                      <div class="small text-secondary mt-1">{{ u.correo }}</div>
+                      <div class="small text-secondary mt-1 text-break">{{ u.correo }}</div>
                     </td>
-                    <td>{{ nombreBarrio(u.id_barrio ?? '') }}</td>
-                    <td>
+                    <td class="col-barrio">{{ nombreBarrio(u.id_barrio ?? '') }}</td>
+                    <td class="col-strikes">
                       <span
                         class="badge fs-6"
                         [class.text-bg-danger]="u.strikes >= 3"
@@ -414,31 +423,61 @@
                         {{ u.strikes }}/3 Strikes
                       </span>
                     </td>
-                    <td>
-                      @if (u.estado === 'Verificado') {
-                        <span class="badge text-bg-success"><i class="bi bi-check-circle me-1"></i>Verificado</span>
-                      } @else if (u.estado === 'Suspendido') {
-                        <span class="badge text-bg-warning text-dark"><i class="bi bi-clock-history me-1"></i>Suspendido</span>
-                        @if (u.suspendido_hasta) {
-                          <div class="small text-muted mt-1">
-                            Hasta: {{ u.suspendido_hasta | date: 'dd/MM/yyyy HH:mm' }}
-                          </div>
+                    <td class="col-estado" style="max-width: 220px; white-space: normal; word-break: break-word;">
+                      <div class="estado-cuenta-cell">
+                        @if (u.estado === 'Suspendido') {
+                          <span class="badge text-bg-warning text-dark"><i class="bi bi-clock-history me-1"></i>Suspendido</span>
+                          @if (u.suspendido_hasta) {
+                            <div class="small text-muted mt-1 motivo-sancion-texto">
+                              Hasta: {{ u.suspendido_hasta | date: 'dd/MM/yyyy HH:mm' }}
+                            </div>
+                          }
+                          @if (u.motivo_sancion) {
+                            <div class="small text-danger mt-1 motivo-sancion-texto">
+                              <i class="bi bi-info-circle me-1"></i>{{ u.motivo_sancion }}
+                            </div>
+                          }
+                        } @else if (u.estado === 'Baneado') {
+                          <span class="badge text-bg-danger"><i class="bi bi-slash-circle me-1"></i>Baneado permanente</span>
+                          @if (u.motivo_sancion) {
+                            <div class="small text-danger mt-1 motivo-sancion-texto">
+                              <i class="bi bi-info-circle me-1"></i>{{ u.motivo_sancion }}
+                            </div>
+                          }
+                        } @else {
+                          <span class="badge text-bg-success"><i class="bi bi-check-circle me-1"></i>Activo</span>
                         }
-                      } @else if (u.estado === 'Baneado') {
-                        <span class="badge text-bg-danger"><i class="bi bi-slash-circle me-1"></i>Baneado permanente</span>
-                      } @else {
-                        <span class="badge text-bg-secondary">{{ u.estado }}</span>
-                      }
-
-                      @if (u.motivo_sancion) {
-                        <div class="small text-danger mt-1" style="max-width: 16rem">
-                          <i class="bi bi-info-circle me-1"></i>{{ u.motivo_sancion }}
-                        </div>
-                      }
+                      </div>
                     </td>
-                    <td class="text-end text-nowrap">
-                      <div class="btn-group">
-                        @if (u.estado !== 'Baneado') {
+                    <td class="col-acciones text-end text-nowrap">
+                      <div class="d-flex justify-content-end align-items-center gap-2" style="width: auto;">
+                        @if (u.estado === 'Baneado') {
+                          <button
+                            class="btn btn-sm btn-outline-success"
+                            title="Restablecer cuenta a Activo y 0 strikes"
+                            [disabled]="procesandoAccion() === u.id"
+                            (click)="reactivarVecino(u)"
+                          >
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Reactivar
+                          </button>
+                        } @else if (u.estado === 'Suspendido') {
+                          <button
+                            class="btn btn-sm btn-outline-danger"
+                            title="Banear permanentemente"
+                            [disabled]="procesandoAccion() === u.id"
+                            (click)="banearVecino(u)"
+                          >
+                            <i class="bi bi-slash-circle me-1"></i>Banear
+                          </button>
+                          <button
+                            class="btn btn-sm btn-outline-success"
+                            title="Restablecer cuenta a Activo y 0 strikes"
+                            [disabled]="procesandoAccion() === u.id"
+                            (click)="reactivarVecino(u)"
+                          >
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Reactivar
+                          </button>
+                        } @else {
                           <button
                             class="btn btn-sm btn-outline-warning"
                             title="Suspender temporalmente por 1, 7 o 30 días"
@@ -454,16 +493,6 @@
                             (click)="banearVecino(u)"
                           >
                             <i class="bi bi-slash-circle me-1"></i>Banear
-                          </button>
-                        }
-                        @if (u.estado === 'Suspendido' || u.estado === 'Baneado' || u.strikes > 0) {
-                          <button
-                            class="btn btn-sm btn-outline-success"
-                            title="Restablecer cuenta a Verificado y 0 strikes"
-                            [disabled]="procesandoAccion() === u.id"
-                            (click)="reactivarVecino(u)"
-                          >
-                            <i class="bi bi-arrow-counterclockwise me-1"></i>Reactivar
                           </button>
                         }
                       </div>

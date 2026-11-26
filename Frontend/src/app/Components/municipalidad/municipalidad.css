@@ -1,0 +1,62 @@
+/* ==========================================================================
+   Panel de la Municipalidad - Moderación de Vecinos
+   ========================================================================== */
+
+.tabla-moderacion-vecinos {
+  width: 100%;
+  min-width: 880px;
+}
+
+.tabla-moderacion-vecinos th.col-vecino,
+.tabla-moderacion-vecinos td.col-vecino {
+  width: 36%;
+  min-width: 180px;
+}
+
+.tabla-moderacion-vecinos th.col-contacto,
+.tabla-moderacion-vecinos td.col-contacto {
+  width: 36%;
+  min-width: 170px;
+}
+
+.tabla-moderacion-vecinos th.col-barrio,
+.tabla-moderacion-vecinos td.col-barrio {
+  width: 28%;
+  min-width: 140px;
+}
+
+.tabla-moderacion-vecinos th.col-strikes,
+.tabla-moderacion-vecinos td.col-strikes {
+  width: 145px;
+  min-width: 145px;
+  white-space: nowrap;
+}
+
+.tabla-moderacion-vecinos th.col-estado,
+.tabla-moderacion-vecinos td.col-estado {
+  width: 190px;
+  max-width: 220px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.tabla-moderacion-vecinos th.col-acciones,
+.tabla-moderacion-vecinos td.col-acciones {
+  width: 200px;
+  min-width: 195px;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.tabla-moderacion-vecinos .estado-cuenta-cell {
+  max-width: 220px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.tabla-moderacion-vecinos .motivo-sancion-texto {
+  max-width: 220px;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
