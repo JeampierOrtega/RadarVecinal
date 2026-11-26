@@ -14,6 +14,7 @@ import { FormField, form } from '@angular/forms/signals';
 
 import { Accion } from '../../Interfaces/accion.interface';
 import {
+  CONSEJOS_ZONA,
   ETIQUETA_NIVEL,
   ETIQUETA_TIPO,
   NIVELES,
@@ -21,7 +22,7 @@ import {
 } from '../../Interfaces/constantes';
 import { Alerta } from '../../Interfaces/panel.interface';
 import { ReportePublico, TipoIncidente } from '../../Interfaces/reporte.interface';
-import { FiltrosMapa, ZonaResumen } from '../../Interfaces/zona.interface';
+import { FiltrosMapa, NivelAviso, ZonaResumen } from '../../Interfaces/zona.interface';
 import { AccionesService } from '../../Services/acciones.service';
 import { mensajeDeError } from '../../Services/api.service';
 import { AuthService } from '../../Services/auth.service';
@@ -29,6 +30,7 @@ import { NotificacionesService } from '../../Services/notificaciones.service';
 import { PanelesService } from '../../Services/paneles.service';
 import { ReportesService } from '../../Services/reportes.service';
 import { ZonasService } from '../../Services/zonas.service';
+import { buscarZona } from '../../Utilidades/geometria';
 import { AccionFormulario } from '../accion-formulario/accion-formulario';
 import { AccionNoticia } from '../accion-noticia/accion-noticia';
 import { AlertaBoton } from '../alerta-boton/alerta-boton';
@@ -36,6 +38,11 @@ import { BaseMapa, MapaCalor, Punto } from '../mapa-calor/mapa-calor';
 import { Modal } from '../modal/modal';
 import { ReporteDetalle } from '../reporte-detalle/reporte-detalle';
 import { ReporteFormulario } from '../reporte-formulario/reporte-formulario';
+
+interface AsistenciaUbicacion {
+  punto: Punto;
+  idZona: string | null;
+}
 
 /** Pantalla principal de ambos actores: mapa de calor con filtros. Solo el Vecino puede reportar. */
 @Component({
@@ -87,6 +94,23 @@ export class Mapa implements OnInit {
   protected readonly ubicando = signal(false);
   protected readonly pantallaCompleta = signal(false);
 
+  /** Tarjeta del asistente preventivo que aparece al usar el botón de ubicación. */
+  protected readonly asistencia = signal<AsistenciaUbicacion | null>(null);
+  protected readonly zonaAsistencia = computed(() => {
+    const asistencia = this.asistencia();
+    if (!asistencia) return null;
+    const zonas = this.zonas();
+    const porId = asistencia.idZona
+      ? zonas.find((zona) => zona.id === asistencia.idZona)
+      : undefined;
+    // Si el GPS llegó antes que los polígonos, se reintenta con el punto guardado.
+    return porId ?? buscarZona(zonas, asistencia.punto.lat, asistencia.punto.lng) ?? null;
+  });
+  protected readonly nivelAsistencia = computed<NivelAviso>(
+    () => this.zonaAsistencia()?.nivel ?? 'fuera',
+  );
+  protected readonly consejoAsistencia = computed(() => CONSEJOS_ZONA[this.nivelAsistencia()]);
+
   // Filtros del mapa también como Signal Form (los selects son strings).
   protected readonly filtros = signal({ tipo: 'todos', dias: '30' });
   protected readonly formFiltros = form(this.filtros);
@@ -137,6 +161,7 @@ export class Mapa implements OnInit {
 
   /** El panel del barrio reemplaza a "Actividad reciente" en la columna derecha. */
   protected abrirZona(id: string): void {
+    this.asistencia.set(null);
     this.actividadAbierta.set(false);
     this.zonaId.set(id);
   }
@@ -198,6 +223,7 @@ export class Mapa implements OnInit {
   }
 
   protected iniciarReporte(): void {
+    this.asistencia.set(null);
     this.zonaId.set(null);
     this.actividadAbierta.set(false);
     this.punto.set(null);
@@ -260,7 +286,10 @@ export class Mapa implements OnInit {
     this.ubicando.set(true);
     try {
       const punto = await this.mapaCalor()!.miUbicacion();
-      this.avisos.exito(`Ubicación encontrada (${punto.lat.toFixed(4)}, ${punto.lng.toFixed(4)}).`);
+      const zona = buscarZona(this.zonas(), punto.lat, punto.lng);
+      this.zonaId.set(null);
+      this.actividadAbierta.set(false);
+      this.asistencia.set({ punto, idZona: zona?.id ?? null });
     } catch (error) {
       await this.avisos.aviso(
         'No pudimos ubicarte',
@@ -269,6 +298,18 @@ export class Mapa implements OnInit {
     } finally {
       this.ubicando.set(false);
     }
+  }
+
+  protected cerrarAsistencia(): void {
+    this.asistencia.set(null);
+  }
+
+  protected verBarrioAsistencia(): void {
+    const zona = this.zonaAsistencia();
+    if (!zona) return;
+    this.asistencia.set(null);
+    this.abrirZona(zona.id);
+    this.mapaCalor()?.centrarBarrio(zona);
   }
 
   protected async alternarPantallaCompleta(): Promise<void> {

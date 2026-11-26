@@ -356,8 +356,7 @@ export class MapaCalor implements OnDestroy {
   /** Respeta la preferencia del sistema de reducir animaciones. */
   private prefiereMenosMovimiento(): boolean {
     return (
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
     );
   }
 
@@ -426,6 +425,13 @@ export class MapaCalor implements OnDestroy {
         case 'leyenda':
         case 'acciones':
           abajo = Math.max(abajo, mapa.bottom - caja.top + 10);
+          break;
+        case 'asistente':
+          // En escritorio es una tarjeta central; solo cuenta como borde inferior
+          // cuando ocupa todo el ancho (móvil), como la hoja del formulario.
+          if (caja.width >= ancho * 0.55) {
+            abajo = Math.max(abajo, mapa.bottom - caja.top + 10);
+          }
           break;
         case 'hoja':
           // Hoja inferior: solo cuenta cuando ocupa casi todo el ancho (móvil).

@@ -1,6 +1,8 @@
 import { TipoIncidente } from './reporte.interface';
 
 export type NivelTemperatura = 'verde' | 'amarillo' | 'naranja' | 'rojo';
+/** Nivel térmico de una zona o 'fuera' cuando el GPS cae fuera de los polígonos. */
+export type NivelAviso = NivelTemperatura | 'fuera';
 
 export interface ZonaResumen {
   id: string;

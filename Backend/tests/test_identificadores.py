@@ -114,7 +114,7 @@ def test_registro_genera_ids_v_consecutivos_distintos():
                 nombre=f"Vecino {i}",
                 dni=f"4567890{i}",
                 correo=f"vecino{i}@correo.com",
-                clave="123456",
+                clave="Radar2026!",
                 id_barrio="b1",
                 codigo_barrio="TORRE-2026",
             )
