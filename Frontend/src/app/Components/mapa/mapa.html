@@ -114,7 +114,12 @@
 
     <!-- Controles del mapa: borde izquierdo, debajo de los filtros -->
     @if (!reportando()) {
-      <div class="controles-mapa card" data-panel="controles" role="group" aria-label="Controles del mapa">
+      <div
+        class="controles-mapa card"
+        data-panel="controles"
+        role="group"
+        aria-label="Controles del mapa"
+      >
         <div class="controles-base">
           <button
             type="button"
@@ -181,6 +186,67 @@
       </div>
     }
 
+    <!-- Asistente preventivo: aparece al centrar el mapa en la ubicación real -->
+    @if (asistencia() && !reportando()) {
+      <section class="asistencia card" data-panel="asistente" aria-live="polite">
+        <div class="asistencia-cabecera">
+          <span
+            class="icono-redondo"
+            [class.rojo]="nivelAsistencia() === 'rojo'"
+            [class.ambar]="nivelAsistencia() === 'amarillo' || nivelAsistencia() === 'naranja'"
+            [class.gris]="nivelAsistencia() === 'fuera'"
+          >
+            <i class="bi {{ consejoAsistencia().icono }}" aria-hidden="true"></i>
+          </span>
+          <div class="min-w-0 flex-grow-1">
+            <div class="asistencia-eyebrow">Sector detectado</div>
+            <h2 class="asistencia-titulo">
+              {{ zonaAsistencia()?.nombre ?? 'Fuera de cobertura' }}
+            </h2>
+          </div>
+          <button
+            type="button"
+            class="btn-close"
+            aria-label="Cerrar recomendación"
+            (click)="cerrarAsistencia()"
+          ></button>
+        </div>
+
+        <div class="asistencia-estado">
+          <span
+            class="badge heat-{{ nivelAsistencia() }} {{
+              nivelAsistencia() === 'amarillo' ? 'text-dark' : ''
+            }}"
+          >
+            {{ consejoAsistencia().riesgo }}
+          </span>
+          @if (zonaAsistencia(); as zona) {
+            <span class="small text-secondary">
+              <i class="bi bi-activity me-1" aria-hidden="true"></i>
+              {{ zona.cantidad }}
+              {{ zona.cantidad === 1 ? 'reporte vigente' : 'reportes vigentes' }}
+            </span>
+          } @else {
+            <span class="small text-secondary">Sin datos del sector</span>
+          }
+        </div>
+
+        <p class="asistencia-texto">{{ consejoAsistencia().recomendacion }}</p>
+
+        @if (zonaAsistencia(); as zona) {
+          <div class="asistencia-pie">
+            <span class="small text-secondary">
+              <i class="bi bi-thermometer-half me-1" aria-hidden="true"></i>
+              Temperatura {{ zona.temperatura.toFixed(1) }}
+            </span>
+            <button type="button" class="btn btn-sm btn-soft" (click)="verBarrioAsistencia()">
+              Ver barrio
+            </button>
+          </div>
+        }
+      </section>
+    }
+
     <!-- Columna derecha: estadísticas + actividad reciente / panel del barrio -->
     @if (!reportando()) {
       <div class="columna-derecha" data-panel="derecha">
@@ -224,10 +290,15 @@
             </div>
             @for (r of ultimos(); track r.id) {
               <button type="button" class="actividad-item" (click)="reporteId.set(r.id)">
-                <span class="punto-nivel heat-{{ nivelGravedad(r.gravedad) }}" aria-hidden="true"></span>
+                <span
+                  class="punto-nivel heat-{{ nivelGravedad(r.gravedad) }}"
+                  aria-hidden="true"
+                ></span>
                 <span class="flex-grow-1 min-w-0 text-start">
                   <span class="d-block fw-semibold text-truncate">{{ etiquetaTipo[r.tipo] }}</span>
-                  <span class="d-block small text-secondary text-truncate">{{ r.descripcion }}</span>
+                  <span class="d-block small text-secondary text-truncate">{{
+                    r.descripcion
+                  }}</span>
                 </span>
                 <span class="small text-secondary text-nowrap">{{ hace(r.fecha) }}</span>
               </button>
@@ -240,7 +311,9 @@
             <div class="panel-cabecera">
               <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span
-                  class="badge heat-{{ zona.nivel }} {{ zona.nivel === 'amarillo' ? 'text-dark' : '' }}"
+                  class="badge heat-{{ zona.nivel }} {{
+                    zona.nivel === 'amarillo' ? 'text-dark' : ''
+                  }}"
                 >
                   {{ etiquetaNivel[zona.nivel] }}
                 </span>
@@ -301,7 +374,11 @@
               }
             </div>
 
-            <button type="button" class="btn btn-soft w-100 panel-volver mt-3" (click)="cerrarZona()">
+            <button
+              type="button"
+              class="btn btn-soft w-100 panel-volver mt-3"
+              (click)="cerrarZona()"
+            >
               <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Volver a la actividad
             </button>
           </div>
@@ -334,7 +411,8 @@
         <div class="leyenda-simbolos">
           <span><i class="bi bi-circle-fill text-danger" aria-hidden="true"></i> Reporte</span>
           <span
-            ><i class="bi bi-shield-check text-acento" aria-hidden="true"></i> Respuesta oficial</span
+            ><i class="bi bi-shield-check text-acento" aria-hidden="true"></i> Respuesta
+            oficial</span
           >
         </div>
       </div>

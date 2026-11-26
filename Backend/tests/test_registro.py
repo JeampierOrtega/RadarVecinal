@@ -40,7 +40,7 @@ def test_registro_exitoso_queda_verificado():
         nombre="Juan Pérez",
         dni="45678901",
         correo="juan@correo.com",
-        clave="123456",
+        clave="Radar2026!",
         id_barrio="b1",
         codigo_barrio="TORRE-2026",
     )
@@ -61,7 +61,7 @@ def test_registro_rechaza_codigo_invalido():
         nombre="Juan Pérez",
         dni="45678901",
         correo="juan@correo.com",
-        clave="123456",
+        clave="Radar2026!",
         id_barrio="b1",
         codigo_barrio="CODIGO-ERRONEO",
     )
@@ -82,7 +82,7 @@ def test_registro_rechaza_dni_duplicado():
         nombre="Juan Pérez",
         dni="45678901",
         correo="juan@correo.com",
-        clave="123456",
+        clave="Radar2026!",
         id_barrio="b1",
         codigo_barrio="TORRE-2026",
     )
@@ -101,7 +101,7 @@ def test_registro_rechaza_correo_duplicado():
         nombre="Juan Pérez",
         dni="45678901",
         correo="juan@correo.com",
-        clave="123456",
+        clave="Radar2026!",
         id_barrio="b1",
         codigo_barrio="TORRE-2026",
     )
@@ -118,7 +118,7 @@ def test_registro_rechaza_barrio_inexistente():
         nombre="Juan Pérez",
         dni="45678901",
         correo="juan@correo.com",
-        clave="123456",
+        clave="Radar2026!",
         id_barrio="b999",
         codigo_barrio="TORRE-2026",
     )
@@ -129,13 +129,36 @@ def test_registro_rechaza_barrio_inexistente():
     assert "El barrio seleccionado no existe" in str(exc_info.value)
 
 
+@pytest.mark.parametrize(
+    "clave",
+    [
+        "Corta1!",  # menos de 8 caracteres
+        "radar2026!",  # sin mayúscula
+        "RadarSegura!",  # sin número
+        "Radar2026",  # sin símbolo
+    ],
+)
+def test_esquema_rechaza_claves_debiles(clave):
+    with pytest.raises(ValidationError) as exc_info:
+        UsuarioRegistro(
+            nombre="Juan Pérez",
+            dni="45678901",
+            correo="juan@correo.com",
+            clave=clave,
+            id_barrio="b1",
+            codigo_barrio="TORRE-2026",
+        )
+
+    assert "contraseña" in str(exc_info.value).lower()
+
+
 def test_esquema_rechaza_dni_formato_invalido():
     with pytest.raises(ValidationError):
         UsuarioRegistro(
             nombre="Juan Pérez",
             dni="12345",  # menos de 8 dígitos
             correo="juan@correo.com",
-            clave="123456",
+            clave="Radar2026!",
             id_barrio="b1",
             codigo_barrio="TORRE-2026",
         )
@@ -145,7 +168,7 @@ def test_esquema_rechaza_dni_formato_invalido():
             nombre="Juan Pérez",
             dni="1234567A",  # contiene letras
             correo="juan@correo.com",
-            clave="123456",
+            clave="Radar2026!",
             id_barrio="b1",
             codigo_barrio="TORRE-2026",
         )

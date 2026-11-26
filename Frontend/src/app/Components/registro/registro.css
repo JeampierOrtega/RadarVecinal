@@ -135,6 +135,88 @@
   padding: 0.75rem;
 }
 
+/* --- Medidor de fortaleza de la contraseña --- */
+.medidor-clave {
+  --color-clave: var(--heat-rojo);
+  margin-top: 0.55rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid #e6eef4;
+  border-radius: 0.75rem;
+  background: #fbfdff;
+}
+.medidor-clave.nivel-muy-debil {
+  --color-clave: var(--heat-rojo);
+}
+.medidor-clave.nivel-debil {
+  --color-clave: var(--heat-naranja);
+}
+.medidor-clave.nivel-media {
+  --color-clave: var(--heat-amarillo);
+}
+.medidor-clave.nivel-fuerte {
+  --color-clave: var(--heat-verde);
+}
+.medidor-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+.medidor-cabecera > i {
+  color: var(--color-clave);
+  font-size: 0.95rem;
+}
+.medidor-etiqueta {
+  color: var(--color-clave);
+}
+.medidor-puntaje {
+  margin-left: auto;
+  color: var(--radar-texto-suave);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+.medidor-barras {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.25rem;
+  margin: 0.4rem 0 0.5rem;
+}
+.medidor-barras span {
+  height: 0.32rem;
+  border-radius: 999px;
+  background: #e5edf3;
+  transition: background-color 0.2s ease;
+}
+.medidor-barras span.activo {
+  background: var(--color-clave);
+}
+.lista-requisitos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.2rem 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--radar-texto-suave);
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+.lista-requisitos li {
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-width: 0;
+}
+.lista-requisitos li > i {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+}
+.lista-requisitos li.cumplido {
+  color: #1d8d58;
+  font-weight: 600;
+}
+
 @media (max-width: 991.98px) {
   .registro-envoltura {
     grid-template-columns: 1fr;
@@ -173,5 +255,8 @@
   }
   .tarjeta-registro {
     padding: 1.15rem;
+  }
+  .lista-requisitos {
+    grid-template-columns: 1fr;
   }
 }

@@ -42,6 +42,11 @@ def _servicio_login(clave_hash: str) -> tuple[UsuarioService, MagicMock, Usuario
 # ---------------------------------------------------------------------------
 # 1. Hash nuevo
 # ---------------------------------------------------------------------------
+def test_login_sigue_aceptando_la_clave_corta_de_las_cuentas_demo():
+    """La validación de fortaleza solo aplica al registro, nunca al login."""
+    assert Login(correo="vecino@barrio.com", clave="123456").clave == "123456"
+
+
 def test_hash_nuevo_es_argon2id_y_verifica():
     hash_nuevo = hashear("clave-segura")
 

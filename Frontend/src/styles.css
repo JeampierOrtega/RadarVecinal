@@ -332,6 +332,9 @@ textarea.form-control {
 .heat-rojo {
   background: var(--heat-rojo);
 }
+.heat-fuera {
+  background: #64748b;
+}
 .punto-nivel {
   display: inline-block;
   width: 0.8rem;

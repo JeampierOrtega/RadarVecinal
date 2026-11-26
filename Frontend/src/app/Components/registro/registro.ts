@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import {
   FormField,
   email,
@@ -16,6 +16,7 @@ import { mensajeDeError } from '../../Services/api.service';
 import { AuthService } from '../../Services/auth.service';
 import { NotificacionesService } from '../../Services/notificaciones.service';
 import { ZonasService } from '../../Services/zonas.service';
+import { evaluarClave } from '../../Utilidades/contrasena';
 
 @Component({
   selector: 'app-registro',
@@ -58,7 +59,20 @@ export class Registro implements OnInit {
     required(campos.correo, { message: 'Escribe tu correo.' });
     email(campos.correo, { message: 'El correo no es válido.' });
     required(campos.clave, { message: 'Crea una contraseña.' });
-    minLength(campos.clave, 6, { message: 'La contraseña debe tener al menos 6 caracteres.' });
+    maxLength(campos.clave, 50, {
+      message: 'La contraseña no puede superar los 50 caracteres.',
+    });
+    validate(campos.clave, ({ value }) => {
+      const clave = value();
+      if (!clave) return undefined;
+      return evaluarClave(clave).valida
+        ? undefined
+        : {
+            kind: 'clave',
+            message:
+              'La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un símbolo.',
+          };
+    });
     required(campos.id_barrio, { message: 'Elige tu barrio.' });
     validate(campos.codigo_barrio, ({ value }) => {
       if (this.modelo().id_barrio && !value().trim()) {
@@ -67,6 +81,9 @@ export class Registro implements OnInit {
       return undefined;
     });
   });
+
+  protected readonly segmentosClave = [1, 2, 3, 4];
+  protected readonly fortalezaClave = computed(() => evaluarClave(this.formulario.clave().value()));
 
   async ngOnInit(): Promise<void> {
     await this.cargarBarrios();

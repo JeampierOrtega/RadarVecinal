@@ -1,7 +1,7 @@
 import { EstadoAccion, TipoAccion } from './accion.interface';
 import { EstadoIniciativa } from './iniciativa.interface';
 import { TipoIncidente } from './reporte.interface';
-import { NivelTemperatura } from './zona.interface';
+import { NivelAviso, NivelTemperatura } from './zona.interface';
 import { Rol } from './usuario.interface';
 
 export const ETIQUETA_TIPO: Record<TipoIncidente, string> = {
@@ -31,6 +31,52 @@ export const COLOR_NIVEL: Record<NivelTemperatura, string> = {
   amarillo: '#f5c518',
   naranja: '#f58b1f',
   rojo: '#d9382b',
+};
+
+/** Recomendaciones del asistente preventivo al ubicar al vecino en el mapa. */
+export interface ConsejoZona {
+  titulo: string;
+  riesgo: string;
+  recomendacion: string;
+  icono: string;
+}
+
+export const CONSEJOS_ZONA: Record<NivelAviso, ConsejoZona> = {
+  verde: {
+    titulo: 'Zona segura',
+    riesgo: 'Riesgo bajo',
+    icono: 'bi-shield-check',
+    recomendacion:
+      'Zona con baja incidencia reportada. Mantén tus precauciones habituales y reporta cualquier anomalía para mantener seguro el sector.',
+  },
+  amarillo: {
+    titulo: 'Precaución',
+    riesgo: 'Riesgo moderado',
+    icono: 'bi-exclamation-circle',
+    recomendacion:
+      'Sector con reportes aislados. Transita por calles iluminadas, evita usar el celular distraído en la vía pública y mantente atento.',
+  },
+  naranja: {
+    titulo: 'Alerta alta',
+    riesgo: 'Riesgo elevado',
+    icono: 'bi-exclamation-triangle',
+    recomendacion:
+      'Zona con incidencia reciente significativa. Evita caminar solo por pasajes poco transitados y comparte tu ubicación con un familiar.',
+  },
+  rojo: {
+    titulo: 'Zona crítica',
+    riesgo: 'Riesgo muy alto',
+    icono: 'bi-shield-exclamation',
+    recomendacion:
+      'Alerta máxima en este sector: evita transitar a pie después de las 7:00 p. m., prioriza movilidad segura y mantente cerca de vías principales.',
+  },
+  fuera: {
+    titulo: 'Fuera de cobertura',
+    riesgo: 'Sin cobertura',
+    icono: 'bi-geo-alt',
+    recomendacion:
+      'Te encuentras fuera de los sectores monitoreados actualmente en Huancayo. Explora el mapa para revisar el estado de los barrios cercanos.',
+  },
 };
 
 export const TIPOS_ACCION: TipoAccion[] = [

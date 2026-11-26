@@ -98,10 +98,44 @@
               id="clave"
               type="password"
               class="form-control"
-              placeholder="Mínimo 6 caracteres"
+              autocomplete="new-password"
+              placeholder="Mínimo 8: mayúscula, número y símbolo"
+              aria-describedby="requisitos-clave"
               [formField]="formulario.clave"
               [class.is-invalid]="formulario.clave().touched() && formulario.clave().invalid()"
             />
+
+            <div [class]="'medidor-clave nivel-' + fortalezaClave().nivel" aria-live="polite">
+              <div class="medidor-cabecera">
+                <i
+                  class="bi"
+                  [class.bi-unlock-fill]="fortalezaClave().puntaje < 2"
+                  [class.bi-lock-fill]="fortalezaClave().puntaje >= 2"
+                  aria-hidden="true"
+                ></i>
+                <span class="medidor-etiqueta">{{ fortalezaClave().etiqueta }}</span>
+                <span class="medidor-puntaje">{{ fortalezaClave().puntaje }}/4</span>
+              </div>
+              <div class="medidor-barras" aria-hidden="true">
+                @for (segmento of segmentosClave; track segmento) {
+                  <span [class.activo]="segmento <= fortalezaClave().puntaje"></span>
+                }
+              </div>
+              <ul class="lista-requisitos" id="requisitos-clave">
+                @for (criterio of fortalezaClave().criterios; track criterio.id) {
+                  <li [class.cumplido]="criterio.cumple">
+                    <i
+                      class="bi"
+                      [class.bi-check-circle-fill]="criterio.cumple"
+                      [class.bi-circle]="!criterio.cumple"
+                      aria-hidden="true"
+                    ></i>
+                    {{ criterio.etiqueta }}
+                  </li>
+                }
+              </ul>
+            </div>
+
             @if (formulario.clave().touched() && formulario.clave().invalid()) {
               <div class="invalid-feedback">{{ formulario.clave().errors()[0].message }}</div>
             }
@@ -179,7 +213,7 @@
           <button
             type="submit"
             class="btn btn-acento btn-lg w-100"
-            [disabled]="cargando()"
+            [disabled]="cargando() || !fortalezaClave().valida"
             [attr.aria-busy]="cargando()"
           >
             @if (cargando()) {

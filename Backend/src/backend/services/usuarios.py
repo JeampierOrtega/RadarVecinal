@@ -1,4 +1,3 @@
-import hashlib
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -65,6 +64,16 @@ class UsuarioService:
         usuario = self._repository.get_by_correo(datos.correo.lower())
         if usuario is None:
             raise NoAutenticadoError("Correo o contraseña incorrectos. Revisa tus credenciales.")
+
+        # La fortaleza solo se exige al registrar. Aquí se valida el hash existente,
+        # sin reglas de longitud: las cuentas demo siguen entrando con "123456".
+        valida, hash_nuevo = verificar_clave(datos.clave, usuario.clave_hash)
+        if not valida:
+            raise NoAutenticadoError("Correo o contraseña incorrectos. Revisa tus credenciales.")
+        if hash_nuevo:
+            usuario = usuario.model_copy(update={"clave_hash": hash_nuevo})
+            self._repository.actualizar_clave_hash(usuario.id, hash_nuevo)
+
         return self._verificar_sanciones(usuario)
 
     def usuario_actual(self, id_usuario: str | None) -> UsuarioDB:
