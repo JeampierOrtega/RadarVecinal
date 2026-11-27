@@ -548,6 +548,13 @@
 /* ==========================================================================
    Adaptaciones por ancho
    ========================================================================== */
+/* Escritorio: los controles se pegan justo encima de la leyenda */
+@media (min-width: 992px) {
+  .controles-mapa {
+    align-self: end;
+  }
+}
+
 @media (max-width: 1199.98px) {
   .capa-paneles {
     grid-template-columns: minmax(0, 1fr) minmax(9rem, 15rem) min(19rem, 30vw);
